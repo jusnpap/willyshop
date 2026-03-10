@@ -200,7 +200,7 @@ async function renderHome() {
                         <img src="${c.imagen_url || 'https://images.unsplash.com/photo-1523381235312-70b92eb49a8d?q=80&w=2070'}" alt="${c.nombre}">
                         <div class="category-content">
                             <h3>${c.nombre}</h3>
-                            <a href="#/catalogo?categoria=${c.id}" class="btn-outline">Descubrir</a>
+                            <button class="btn-outline">DESCUBRIR</button>
                         </div>
                     </div>
                 `).join('')}
@@ -661,7 +661,7 @@ async function renderAdminOrders() {
     try {
         const orders = await API.get('/admin/pedidos');
         sub.innerHTML = `
-    < h1 style = "margin-bottom: 40px;" > Gestión de Pedidos</h1 >
+            <h1 style="margin-bottom: 40px;">Gestión de Pedidos</h1>
         <table style="width: 100%; border-collapse: collapse;">
             <thead>
                 <tr style="text-align: left; border-bottom: 2px solid #ddd;">
@@ -701,13 +701,13 @@ async function renderAdminOrders() {
         </table>
 `;
     } catch (e) {
-        sub.innerHTML = `< p > Error: ${e.message}</p > `;
+        sub.innerHTML = `<p>Error: ${e.message}</p>`;
     }
 }
 
 async function updateOrderStatus(id, status) {
     try {
-        await API.patch(`/ admin / pedidos / ${id}/estado`, { estado: status });
+        await API.patch(`/admin/pedidos/${id}/estado`, { estado: status });
         showToast('Estado de pedido actualizado');
     } catch (e) {
         showToast(e.message);
@@ -871,22 +871,44 @@ async function viewOrderDetails(id) {
         const currentHtml = sub.innerHTML;
 
         sub.innerHTML = `
-            <button onclick="renderAdminOrders()" style="margin-bottom: 20px;"><i class="fas fa-arrow-left"></i> Volver</button>
-            <div style="background: #fff; padding: 30px; border: 1px solid #eee;">
-                <h2>Detalles del Pedido #${o.id}</h2>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 30px;">
+            <button onclick="renderAdminOrders()" style="margin-bottom: 20px; background: none; border: none; cursor: pointer; text-decoration: underline;"><i class="fas fa-arrow-left"></i> Volver a la lista</button>
+            <div style="background: #fff; padding: 40px; border: 1px solid #eee; border-radius: 4px; box-shadow: 0 5px 15px rgba(0,0,0,0.05);">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; border-bottom: 1px solid #eee; padding-bottom: 20px;">
                     <div>
-                        <h3 style="font-size: 14px; text-transform: uppercase; color: #888;">Envío</h3>
-                        <p><strong>${o.nombre_envio}</strong></p>
-                        <p>${o.direccion_envio}</p>
-                        <p>${o.telefono_envio}</p>
-                        <p>${o.email_envio}</p>
+                        <h2 style="font-size: 24px; margin-bottom: 5px;">Pedido #${o.id}</h2>
+                        <span style="font-size: 13px; color: #888;">Realizado el ${new Date(o.fecha).toLocaleDateString()}</span>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="text-transform: uppercase; font-size: 11px; letter-spacing: 1px; color: #888; margin-bottom: 5px;">Estado Actual</div>
+                        <span style="padding: 5px 15px; background: #000; color: #fff; text-transform: uppercase; font-size: 11px; font-weight: 700; border-radius: 20px;">${o.estado}</span>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 60px;">
+                    <div>
+                        <h3 style="font-size: 14px; text-transform: uppercase; color: #000; letter-spacing: 1px; margin-bottom: 20px; border-bottom: 2px solid #000; display: inline-block;">Datos de Envío</h3>
+                        <div style="line-height: 1.8; font-size: 14px;">
+                            <p><strong>Nombre:</strong> ${o.nombre_envio}</p>
+                            <p><strong>Dirección:</strong> ${o.direccion_envio}</p>
+                            <p><strong>Teléfono:</strong> ${o.telefono_envio}</p>
+                            <p><strong>Email:</strong> ${o.email_envio || 'N/A'}</p>
+                            ${o.notas ? `<div style="margin-top: 20px; padding: 15px; background: #f9f9f9; border-radius: 4px;"><strong>Notas:</strong><br>${o.notas}</div>` : ''}
+                        </div>
                     </div>
                     <div>
-                        <h3 style="font-size: 14px; text-transform: uppercase; color: #888;">Items</h3>
-                        ${o.items.map(i => `<p>${i.cantidad}x ${i.nombre_producto} (${i.talla || '-'}) - ${formatPrice(i.precio_unitario)}</p>`).join('')}
-                        <hr style="margin: 15px 0; border: 0; border-top: 1px solid #eee;">
-                        <p><strong>TOTAL: ${formatPrice(o.total)}</strong></p>
+                        <h3 style="font-size: 14px; text-transform: uppercase; color: #000; letter-spacing: 1px; margin-bottom: 20px; border-bottom: 2px solid #000; display: inline-block;">Resumen de Items</h3>
+                        <div style="margin-bottom: 30px;">
+                            ${o.items.map(i => `
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 14px;">
+                                    <span>${i.cantidad}x ${i.nombre_producto} <span style="color: #888;">(${i.talla || 'Única'})</span></span>
+                                    <strong>${formatPrice(i.precio_unitario * i.cantidad)}</strong>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div style="border-top: 1px solid #eee; padding-top: 20px; display: flex; justify-content: space-between; font-size: 18px; font-weight: 800;">
+                            <span>TOTAL</span>
+                            <span>${formatPrice(o.total)}</span>
+                        </div>
                     </div>
                 </div>
             </div>
