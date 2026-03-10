@@ -12,6 +12,24 @@ const state = {
     params: {}
 };
 
+// --- File Upload Helper (Base64 for D1) ---
+async function handleFileUpload(input, targetId) {
+    const file = input.files[0];
+    if (!file) return;
+
+    if (file.size > 1024 * 1024) { // 1MB limit for D1/Workers kv-like storage in base64
+        showToast("La imagen es demasiado grande. El límite es 1MB.");
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        document.getElementById(targetId).value = e.target.result;
+        showToast("Imagen cargada exitosamente.");
+    };
+    reader.readAsDataURL(file);
+}
+
 // --- API Helpers ---
 const API = {
     async request(path, options = {}) {
@@ -108,16 +126,22 @@ function updateUI() {
 
     // Update cart counter
     const totalItems = state.cart.reduce((sum, item) => sum + item.cantidad, 0);
-    cartCount.innerText = totalItems;
-    cartCount.style.display = totalItems > 0 ? 'flex' : 'none';
+    if (cartCount) {
+        cartCount.innerText = totalItems;
+        cartCount.style.display = totalItems > 0 ? 'flex' : 'none';
+    }
 
     // Update user icon
-    if (state.user) {
-        userBtn.innerHTML = `<i class="fas fa-user"></i>`;
-        userBtn.title = `Hola, ${state.user.nombre}`;
-    } else {
-        userBtn.innerHTML = `<i class="far fa-user"></i>`;
+    if (userBtn) {
+        if (state.user) {
+            userBtn.innerHTML = `<i class="fas fa-user"></i>`;
+            userBtn.title = `Hola, ${state.user.nombre}`;
+        } else {
+            userBtn.innerHTML = `<i class="far fa-user"></i>`;
+        }
     }
+
+    initScrollReveal();
 }
 
 function closePanels() {
@@ -193,19 +217,17 @@ async function renderHome() {
         const cats = await API.get('/categorias');
         const catGrid = document.getElementById('home-categories');
         if (cats && cats.length > 0) {
-            catGrid.innerHTML = `
-            <section class="categories-grid container">
-                ${cats.map(c => `
-                    <div class="category-card reveal reveal-up" onclick="window.location.hash='#/catalogo?categoria=${c.id}'" style="cursor: pointer;">
-                        <img src="${c.imagen_url || 'https://images.unsplash.com/photo-1523381235312-70b92eb49a8d?q=80&w=2070'}" alt="${c.nombre}">
-                        <div class="category-content">
-                            <h3>${c.nombre}</h3>
-                            <button class="btn-outline">DESCUBRIR</button>
-                        </div>
+            catGrid.innerHTML = cats.map(c => `
+                <div class="category-card reveal reveal-up" onclick="window.location.hash='#/catalogo?categoria=${c.id}'" style="cursor: pointer;">
+                    <img src="${c.imagen_url || 'https://images.unsplash.com/photo-1523381235312-70b92eb49a8d?q=80&w=2070'}" alt="${c.nombre}">
+                    <div class="category-content">
+                        <h3>${c.nombre}</h3>
+                        <button class="btn-outline">DESCUBRIR</button>
                     </div>
-                `).join('')}
-            </section>`;
-        } else {
+                </div>
+            `).join('');
+        }
+        else {
             catGrid.innerHTML = '<p style="text-align: center; grid-column: 1/-1;">No hay categorías disponibles.</p>';
         }
     } catch (e) {
@@ -958,7 +980,14 @@ async function openProductModal(id = null) {
                 </div>
             </div>
 
-            <div class="form-group"><label>Imagen Principal URL</label><input type="text" id="p-img" value="${p.imagen_url}" placeholder="assets/p1.png"></div>
+            <div class="form-group">
+                <label>Imagen Principal</label>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="p-img" value="${p.imagen_url}" placeholder="URL o sube archivo" style="flex: 1;">
+                    <input type="file" id="p-file" style="display: none;" onchange="handleFileUpload(this, 'p-img')">
+                    <button type="button" class="btn-outline" onclick="document.getElementById('p-file').click()" style="padding: 5px 10px; font-size: 11px;">Subir</button>
+                </div>
+            </div>
             
             <div class="form-group">
                 <label>Tallas y Stock</label>
@@ -967,7 +996,7 @@ async function openProductModal(id = null) {
                         <div class="talla-row" style="display: flex; gap: 10px; margin-bottom: 10px;">
                             <input type="text" placeholder="Nombre (S, M, L...)" value="${t.nombre}" class="t-nombre" style="flex: 2;">
                             <input type="number" placeholder="Stock" value="${t.stock}" class="t-stock" style="flex: 1;">
-                            <button type="button" onclick="this.parentElement.remove()" style="color: red;">&times;</button>
+                            <button type="button" onclick="this.parentElement.remove()" style="color: red; background: none; border: none; font-size: 18px; cursor: pointer;">&times;</button>
                         </div>
                     `).join('')}
                 </div>
@@ -978,15 +1007,17 @@ async function openProductModal(id = null) {
                 <label>Colores e Imágenes</label>
                 <div id="colores-container">
                     ${p.colores.map((c, i) => `
-                        <div class="color-row" style="display: flex; gap: 10px; margin-bottom: 10px; background: #f9f9f9; padding: 10px; border-radius: 4px;">
-                            <div style="flex: 1;">
+                        <div class="color-row" style="display: grid; grid-template-columns: 100px 1fr 30px; gap: 10px; margin-bottom: 10px; background: #f9f9f9; padding: 15px; border-radius: 4px; align-items: start;">
+                            <div>
                                 <input type="text" placeholder="Nombre" value="${c.nombre}" class="c-nombre" style="margin-bottom: 5px;">
-                                <input type="color" value="${c.hex_code}" class="c-hex" style="height: 30px;">
+                                <input type="color" value="${c.hex_code}" class="c-hex" style="height: 35px; width: 100%; cursor: pointer;">
                             </div>
-                            <div style="flex: 2;">
-                                <input type="text" placeholder="Imagen URL específica" value="${c.imagen_url || ''}" class="c-img">
+                            <div>
+                                <input type="text" placeholder="Imagen URL específica" value="${c.imagen_url || ''}" class="c-img" id="c-img-${i}" style="margin-bottom: 5px;">
+                                <input type="file" style="display: none;" onchange="handleFileUpload(this, 'c-img-${i}')" id="c-file-${i}">
+                                <button type="button" class="btn-outline" onclick="document.getElementById('c-file-${i}').click()" style="padding: 3px 8px; font-size: 10px;">Subir Imagen Color</button>
                             </div>
-                            <button type="button" onclick="this.parentElement.remove()" style="color: red;">&times;</button>
+                            <button type="button" onclick="this.parentElement.remove()" style="color: red; background: none; border: none; font-size: 20px; cursor: pointer; padding: 0;">&times;</button>
                         </div>
                     `).join('')}
                 </div>
@@ -1018,23 +1049,28 @@ async function openProductModal(id = null) {
     };
 
     window.addColorRow = () => {
+        const idx = document.querySelectorAll('.color-row').length;
         const div = document.createElement('div');
         div.className = 'color-row';
-        div.style.display = 'flex';
+        div.style.display = 'grid';
+        div.style.gridTemplateColumns = '100px 1fr 30px';
         div.style.gap = '10px';
         div.style.marginBottom = '10px';
         div.style.background = '#f9f9f9';
-        div.style.padding = '10px';
+        div.style.padding = '15px';
         div.style.borderRadius = '4px';
+        div.style.alignItems = 'start';
         div.innerHTML = `
-            <div style="flex: 1;">
+            <div>
                 <input type="text" placeholder="Nombre" class="c-nombre" style="margin-bottom: 5px;">
-                <input type="color" value="#000000" class="c-hex" style="height: 30px;">
+                <input type="color" value="#000000" class="c-hex" style="height: 35px; width: 100%; cursor: pointer;">
             </div>
-            <div style="flex: 2;">
-                <input type="text" placeholder="Imagen URL" class="c-img">
+            <div>
+                <input type="text" placeholder="Imagen URL" class="c-img" id="c-img-${idx}" style="margin-bottom: 5px;">
+                <input type="file" style="display: none;" onchange="handleFileUpload(this, 'c-img-${idx}')" id="c-file-${idx}">
+                <button type="button" class="btn-outline" onclick="document.getElementById('c-file-${idx}').click()" style="padding: 3px 8px; font-size: 10px;">Subir Imagen Color</button>
             </div>
-            <button type="button" onclick="this.parentElement.remove()" style="color: red;">&times;</button>
+            <button type="button" onclick="this.parentElement.remove()" style="color: red; background: none; border: none; font-size: 20px; cursor: pointer; padding: 0;">&times;</button>
         `;
         document.getElementById('colores-container').appendChild(div);
     };
@@ -1149,10 +1185,7 @@ function showRegister() {
     };
 }
 
-function updateUI() {
-    initScrollReveal();
-    // ... rest of state updates if any needed
-}
+// function updateUI() was here, moved to top
 
 function initScrollReveal() {
     const observer = new IntersectionObserver((entries) => {
