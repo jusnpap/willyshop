@@ -1055,6 +1055,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('close-cart').onclick = closePanels;
     document.getElementById('overlay').onclick = closePanels;
     document.getElementById('menu-toggle').onclick = () => {
+        closePanels();
         document.getElementById('menu-panel').classList.add('active');
         document.getElementById('overlay').classList.add('active');
     };
