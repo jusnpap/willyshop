@@ -62,6 +62,7 @@ function router() {
     else if (path.startsWith('#/producto/')) renderProduct(path.split('/').pop());
     else if (path === '#/checkout') renderCheckout();
     else if (path === '#/cuenta') renderAccount();
+    else if (path === '#/nosotros') renderAbout();
     else if (path.startsWith('#/admin')) renderAdmin();
     else renderHome();
 
@@ -151,6 +152,7 @@ function openAccountPanel() {
             <ul class="mobile-nav" style="border-top: 1px solid #eee; padding-top: 20px;">
                 <li><a href="#/cuenta"><i class="fas fa-user-edit" style="width: 25px;"></i> EDITAR INFORMACIÓN</a></li>
                 ${isAdmin ? `<li><a href="#/admin" style="color: var(--primary); font-weight: 700;"><i class="fas fa-user-shield" style="width: 25px;"></i> PANEL DE ADMIN</a></li>` : ''}
+                <li><a href="#/nosotros"><i class="fas fa-info-circle" style="width: 25px;"></i> SOBRE NOSOTROS</a></li>
                 <li style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px;">
                     <a href="javascript:void(0)" onclick="logout()" style="color: #c62828;"><i class="fas fa-sign-out-alt" style="width: 25px;"></i> CERRAR SESIÓN</a>
                 </li>
@@ -592,6 +594,28 @@ async function renderAccount() {
     };
 }
 
+async function renderAbout() {
+    const container = document.getElementById('main-content');
+    container.innerHTML = `
+        <div class="container" style="margin-top: 120px; max-width: 800px;">
+            <h1 class="section-title" style="text-align: left;">Sobre Nosotros</h1>
+            <div id="about-content" class="animate-fade-up" style="line-height: 2; font-size: 16px; color: var(--gray-dark);">
+                Cargando...
+            </div>
+            <div style="margin-top: 60px;">
+                <img src="https://images.unsplash.com/photo-1534452203293-494d7ddbf7e0?q=80&w=2070" style="width: 100%; height: 400px; object-fit: cover; border-radius: 4px;">
+            </div>
+        </div>
+    `;
+
+    try {
+        const ajustes = await API.get('/ajustes');
+        document.getElementById('about-content').innerText = ajustes.quienes_somos || 'Willy Shop - Tu estilo, tu firma.';
+    } catch (e) {
+        document.getElementById('about-content').innerText = 'Error al cargar información.';
+    }
+}
+
 // --- Admin Views ---
 
 async function renderAdmin() {
@@ -605,11 +629,12 @@ async function renderAdmin() {
         <div class="admin-container">
             <aside class="admin-sidebar">
                 <h2 style="font-size: 18px; margin-bottom: 40px; text-transform: uppercase;">Admin Panel</h2>
-                <a href="#/admin" class="admin-nav-item active" id="nav-dash">Dashboard</a>
-                <a href="#/admin/productos" class="admin-nav-item" id="nav-prods">Productos</a>
-                <a href="#/admin/pedidos" class="admin-nav-item" id="nav-pedidos">Pedidos</a>
+                <a href="#/admin" class="admin-nav-item ${subview === 'dash' ? 'active' : ''}">Dashboard</a>
+                <a href="#/admin/productos" class="admin-nav-item ${subview === 'productos' ? 'active' : ''}">Productos</a>
+                <a href="#/admin/pedidos" class="admin-nav-item ${subview === 'orders' ? 'active' : ''}">Pedidos</a>
+                <a href="#/admin/nosotros" class="admin-nav-item ${subview === 'nosotros' ? 'active' : ''}">Nosotros</a>
                 <div style="margin-top: 40px;">
-                    <button onclick="logout()" class="admin-nav-item">Cerrar Sesión</button>
+                    <button onclick="logout()" class="admin-nav-item" style="width: 100%; text-align: left;">Cerrar Sesión</button>
                 </div>
             </aside>
             <main class="admin-main" id="admin-subview">
@@ -622,6 +647,101 @@ async function renderAdmin() {
     if (subview === 'dash') renderAdminDash();
     else if (subview === 'productos') renderAdminProducts();
     else if (subview === 'pedidos') renderAdminOrders();
+    else if (subview === 'nosotros') renderAdminAbout();
+}
+
+async function renderAdminOrders() {
+    const sub = document.getElementById('admin-subview');
+    sub.innerHTML = '<h1>Pedidos</h1><p>Cargando pedidos...</p>';
+
+    try {
+        const orders = await API.get('/admin/pedidos');
+        sub.innerHTML = `
+            <h1 style="margin-bottom: 40px;">Gestión de Pedidos</h1>
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="text-align: left; border-bottom: 2px solid #ddd;">
+                        <th style="padding: 15px;">ID</th>
+                        <th>Cliente</th>
+                        <th>Fecha</th>
+                        <th>Total</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${orders.map(o => `
+                        <tr style="border-bottom: 1px solid #eee;">
+                            <td style="padding: 15px;">#${o.id}</td>
+                            <td>
+                                <strong>${o.nombre_envio}</strong><br>
+                                <span style="font-size: 11px; color: #888;">${o.telefono_envio}</span>
+                            </td>
+                            <td>${new Date(o.fecha).toLocaleDateString()}</td>
+                            <td>${formatPrice(o.total)}</td>
+                            <td>
+                                <select onchange="updateOrderStatus(${o.id}, this.value)" style="padding: 5px; font-size: 12px;">
+                                    <option value="pendiente" ${o.estado === 'pendiente' ? 'selected' : ''}>Pendiente</option>
+                                    <option value="procesando" ${o.estado === 'procesando' ? 'selected' : ''}>Procesando</option>
+                                    <option value="enviado" ${o.estado === 'enviado' ? 'selected' : ''}>Enviado</option>
+                                    <option value="entregado" ${o.estado === 'entregado' ? 'selected' : ''}>Entregado</option>
+                                    <option value="cancelado" ${o.estado === 'cancelado' ? 'selected' : ''}>Cancelado</option>
+                                </select>
+                            </td>
+                            <td>
+                                <button onclick="viewOrderDetails(${o.id})" title="Ver detalles"><i class="fas fa-eye"></i></button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    } catch (e) {
+        sub.innerHTML = `<p>Error: ${e.message}</p>`;
+    }
+}
+
+async function updateOrderStatus(id, status) {
+    try {
+        await API.patch(`/admin/pedidos/${id}/estado`, { estado: status });
+        showToast('Estado de pedido actualizado');
+    } catch (e) {
+        showToast(e.message);
+    }
+}
+
+async function renderAdminAbout() {
+    const sub = document.getElementById('admin-subview');
+    sub.innerHTML = '<h1>Editar Quiénes Somos</h1><p>Cargando...</p>';
+
+    try {
+        const ajustes = await API.get('/ajustes');
+        sub.innerHTML = `
+            <h1 style="margin-bottom: 40px;">Editar Quiénes Somos</h1>
+            <div style="max-width: 600px;">
+                <form id="admin-about-form">
+                    <div class="form-group">
+                        <label>Contenido Principal</label>
+                        <textarea id="about-text" rows="10" required>${ajustes.quienes_somos || ''}</textarea>
+                    </div>
+                    <button type="submit" class="btn-dark btn-premium">Guardar Cambios</button>
+                </form>
+            </div>
+        `;
+
+        document.getElementById('admin-about-form').onsubmit = async (e) => {
+            e.preventDefault();
+            const text = document.getElementById('about-text').value;
+            try {
+                await API.put('/ajustes', { quienes_somos: text });
+                showToast('Información actualizada correctamente');
+            } catch (err) {
+                showToast(err.message);
+            }
+        };
+    } catch (e) {
+        sub.innerHTML = '<p>Error al cargar ajustes.</p>';
+    }
 }
 
 async function renderAdminDash() {
@@ -737,12 +857,103 @@ async function deleteProduct(id) {
     } catch (e) { showToast(e.message); }
 }
 
+async function viewOrderDetails(id) {
+    try {
+        const orders = await API.get('/admin/pedidos');
+        const o = orders.find(x => x.id === id);
+        if (!o) return;
+
+        sub = document.getElementById('admin-subview'); // Re-use sub to show details
+        const currentHtml = sub.innerHTML;
+
+        sub.innerHTML = `
+            <button onclick="renderAdminOrders()" style="margin-bottom: 20px;"><i class="fas fa-arrow-left"></i> Volver</button>
+            <div style="background: #fff; padding: 30px; border: 1px solid #eee;">
+                <h2>Detalles del Pedido #${o.id}</h2>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 30px;">
+                    <div>
+                        <h3 style="font-size: 14px; text-transform: uppercase; color: #888;">Envío</h3>
+                        <p><strong>${o.nombre_envio}</strong></p>
+                        <p>${o.direccion_envio}</p>
+                        <p>${o.telefono_envio}</p>
+                        <p>${o.email_envio}</p>
+                    </div>
+                    <div>
+                        <h3 style="font-size: 14px; text-transform: uppercase; color: #888;">Items</h3>
+                        ${o.items.map(i => `<p>${i.cantidad}x ${i.nombre_producto} (${i.talla || '-'}) - ${formatPrice(i.precio_unitario)}</p>`).join('')}
+                        <hr style="margin: 15px 0; border: 0; border-top: 1px solid #eee;">
+                        <p><strong>TOTAL: ${formatPrice(o.total)}</strong></p>
+                    </div>
+                </div>
+            </div>
+        `;
+    } catch (e) { showToast(e.message); }
+}
+
 async function editProduct(id) {
-    showToast('Función de edición próximamente (Demo)');
+    openProductModal(id);
 }
 
 async function openAddProductModal() {
-    showToast('Función de añadir producto próximamente (Demo)');
+    openProductModal();
+}
+
+async function openProductModal(id = null) {
+    let p = { nombre: '', descripcion: '', precio: '', categoria_id: 1, genero: 'unisex', imagen_url: '', tallas: [] };
+    if (id) {
+        try {
+            p = await API.get(`/productos/${id}`);
+        } catch (e) { return showToast(e.message); }
+    }
+
+    const modal = document.getElementById('auth-modal'); // Reusing modal container
+    const forms = document.getElementById('auth-forms');
+
+    const cats = await API.get('/categorias');
+
+    forms.innerHTML = `
+        <h2 style="margin-bottom: 30px;">${id ? 'Editar' : 'Nuevo'} Producto</h2>
+        <form id="product-form">
+            <div class="form-group"><label>Nombre</label><input type="text" id="p-nombre" value="${p.nombre}" required></div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="form-group"><label>Precio</label><input type="number" step="0.01" id="p-precio" value="${p.precio}" required></div>
+                <div class="form-group"><label>Categoría</label>
+                    <select id="p-cat">
+                        ${cats.map(c => `<option value="${c.id}" ${p.categoria_id == c.id ? 'selected' : ''}>${c.nombre}</option>`).join('')}
+                    </select>
+                </div>
+            </div>
+            <div class="form-group"><label>Imagen URL</label><input type="text" id="p-img" value="${p.imagen_url}" placeholder="assets/p1.png"></div>
+            <div class="form-group"><label>Descripción</label><textarea id="p-desc">${p.descripcion || ''}</textarea></div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button type="submit" class="btn-dark btn-premium" style="flex: 1;">Guardar</button>
+                <button type="button" onclick="closeModal('auth-modal')" class="btn-premium" style="flex: 1;">Cancelar</button>
+            </div>
+        </form>
+    `;
+
+    document.getElementById('product-form').onsubmit = async (e) => {
+        e.preventDefault();
+        const data = {
+            nombre: document.getElementById('p-nombre').value,
+            precio: parseFloat(document.getElementById('p-precio').value),
+            categoria_id: parseInt(document.getElementById('p-cat').value),
+            imagen_url: document.getElementById('p-img').value,
+            descripcion: document.getElementById('p-desc').value,
+            genero: p.genero // keep existing
+        };
+
+        try {
+            if (id) await API.put(`/admin/productos/${id}`, data);
+            else await API.post('/admin/productos', data);
+
+            showToast('Producto guardado');
+            closeModal('auth-modal');
+            renderAdminProducts();
+        } catch (err) { showToast(err.message); }
+    };
+
+    modal.classList.add('active');
 }
 
 // --- Auth Modal Helpers ---
@@ -872,6 +1083,10 @@ window.updateCartQty = updateCartQty;
 window.removeFromCart = removeFromCart;
 window.toggleProductStatus = toggleProductStatus;
 window.deleteProduct = deleteProduct;
+window.editProduct = editProduct;
+window.openAddProductModal = openAddProductModal;
+window.updateOrderStatus = updateOrderStatus;
+window.viewOrderDetails = viewOrderDetails;
 window.showRegister = showRegister;
 window.openAuthModal = openAuthModal;
 window.logout = logout;

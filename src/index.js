@@ -91,6 +91,13 @@ export default {
                 response = await withAdmin(request, env, handleAdminDeleteProducto);
             }
 
+            // ---- AJUSTES ----
+            else if (path === '/api/ajustes' && request.method === 'GET') {
+                response = await handleGetAjustes(env);
+            } else if (path === '/api/ajustes' && request.method === 'PUT') {
+                response = await withAdmin(request, env, handleUpdateAjustes);
+            }
+
             else {
                 response = json({ error: 'Ruta no encontrada' }, 404);
             }
@@ -588,4 +595,21 @@ async function handleAdminDeleteProducto(request, env) {
     await env.DB.prepare('DELETE FROM colores WHERE producto_id = ?').bind(id).run();
     await env.DB.prepare('DELETE FROM productos WHERE id = ?').bind(id).run();
     return json({ message: 'Producto eliminado' });
+}
+
+// ---- AJUSTES HANDLERS ----
+async function handleGetAjustes(env) {
+    const { results } = await env.DB.prepare('SELECT * FROM ajustes').all();
+    const map = {};
+    results.forEach(r => map[r.clave] = r.valor);
+    return json(map);
+}
+
+async function handleUpdateAjustes(request, env) {
+    const data = await request.json();
+    for (const [clave, valor] of Object.entries(data)) {
+        await env.DB.prepare('INSERT OR REPLACE INTO ajustes (clave, valor) VALUES (?, ?)')
+            .bind(clave, valor).run();
+    }
+    return json({ message: 'Ajustes actualizados' });
 }

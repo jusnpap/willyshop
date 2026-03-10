@@ -12,8 +12,13 @@ DROP TABLE IF EXISTS tallas;
 DROP TABLE IF EXISTS usuarios;
 DROP TABLE IF EXISTS productos;
 DROP TABLE IF EXISTS categorias;
+DROP TABLE IF EXISTS ajustes;
 
--- 1. Categorías
+-- 0. Ajustes (Contenido editable)
+CREATE TABLE ajustes (
+  clave TEXT PRIMARY KEY,
+  valor TEXT
+);
 CREATE TABLE categorias (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   nombre TEXT NOT NULL,
@@ -142,3 +147,7 @@ INSERT INTO tallas (producto_id, nombre, stock) VALUES
 -- Colores
 INSERT INTO colores (producto_id, nombre, hex_code) VALUES
 (1, 'Negro', '#000000'), (2, 'Multicolor', '#0026ff'), (3, 'Verde', '#2d5a27'), (4, 'Negro', '#1a1a1a');
+
+-- Ajustes iniciales
+INSERT INTO ajustes (clave, valor) VALUES 
+('quienes_somos', 'Willy Shop es tu destino definitivo para la moda urbana y premium. Fundada en 2026, nos dedicamos a ofrecer piezas exclusivas que combinan arte, comodidad y estilo. Cada prenda es seleccionada cuidadosamente para asegurar la máxima calidad y un diseño vanguardista.');
