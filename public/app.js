@@ -618,9 +618,15 @@ async function renderAbout() {
 
 // --- Admin Views ---
 
-const subview = window.location.hash.split('/')[2] || 'dash';
-const container = document.getElementById('main-content');
-container.innerHTML = `
+async function renderAdmin() {
+    if (!state.user || state.user.rol !== 'admin') {
+        window.location.hash = '#/';
+        return;
+    }
+
+    const subview = window.location.hash.split('/')[2] || 'dash';
+    const container = document.getElementById('main-content');
+    container.innerHTML = `
         <div class="admin-container">
             <aside class="admin-sidebar">
                 <h2 style="font-size: 18px; margin-bottom: 40px; text-transform: uppercase;">Admin Panel</h2>
@@ -633,22 +639,11 @@ container.innerHTML = `
                 </div>
             </aside>
             <main class="admin-main" id="admin-subview">
-                <!-- Administrative subview content here -->
+                <!-- Subview content here -->
             </main>
         </div>
     `;
 
-if (subview === 'dash') renderAdminDash();
-else if (subview === 'productos') renderAdminProducts();
-else if (subview === 'pedidos') renderAdminOrders();
-else if (subview === 'nosotros') renderAdminAbout();
-}
-                < !--Dashboard content here-- >
-            </main >
-        </div >
-    `;
-
-    const subview = window.location.hash.split('/')[2] || 'dash';
     if (subview === 'dash') renderAdminDash();
     else if (subview === 'productos') renderAdminProducts();
     else if (subview === 'pedidos') renderAdminOrders();
@@ -702,17 +697,17 @@ async function renderAdminOrders() {
         </table>
 `;
     } catch (e) {
-        sub.innerHTML = `< p > Error: ${ e.message }</p > `;
+        sub.innerHTML = `< p > Error: ${e.message}</p > `;
     }
 }
 
 async function updateOrderStatus(id, status) {
     try {
-        await API.patch(`/ admin / pedidos / ${ id }/estado`, { estado: status });
-showToast('Estado de pedido actualizado');
+        await API.patch(`/ admin / pedidos / ${id}/estado`, { estado: status });
+        showToast('Estado de pedido actualizado');
     } catch (e) {
-    showToast(e.message);
-}
+        showToast(e.message);
+    }
 }
 
 async function renderAdminAbout() {
