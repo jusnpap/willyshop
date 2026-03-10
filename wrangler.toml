@@ -8,4 +8,4 @@ directory = "./public"
 [[d1_databases]]
 binding = "DB"
 database_name = "willy-store-db"
-database_id = "PON_AQUI_TU_DATABASE_ID"
+database_id = "b8bd8fb8-eaee-40c6-92ed-d0fc1b0ac1c3"
