@@ -193,15 +193,18 @@ async function renderHome() {
         const cats = await API.get('/categorias');
         const catGrid = document.getElementById('home-categories');
         if (cats && cats.length > 0) {
-            catGrid.innerHTML = cats.map(cat => `
-                <div class="category-card animate-fade-up">
-                    <img src="${cat.imagen_url || 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=600'}" class="category-img" onerror="this.src='https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=600'">
-                    <div class="category-info">
-                        <h3 class="category-name">${cat.nombre}</h3>
-                        <a href="#/catalogo?categoria=${cat.id}" class="btn-premium">Descubrir</a>
+            catGrid.innerHTML = `
+            <section class="categories-grid container">
+                ${cats.map(c => `
+                    <div class="category-card animate-fade-up" onclick="window.location.hash='#/catalogo?categoria=${c.id}'" style="cursor: pointer;">
+                        <img src="${c.imagen_url || 'https://images.unsplash.com/photo-1523381235312-70b92eb49a8d?q=80&w=2070'}" alt="${c.nombre}">
+                        <div class="category-content">
+                            <h3>${c.nombre}</h3>
+                            <a href="#/catalogo?categoria=${c.id}" class="btn-outline">Descubrir</a>
+                        </div>
                     </div>
-                </div>
-            `).join('');
+                `).join('')}
+            </section>`;
         } else {
             catGrid.innerHTML = '<p style="text-align: center; grid-column: 1/-1;">No hay categorías disponibles.</p>';
         }
@@ -500,6 +503,7 @@ async function renderCheckout() {
                 nombre_envio: document.getElementById('ship-name').value,
                 direccion_envio: document.getElementById('ship-address').value,
                 telefono_envio: document.getElementById('ship-phone').value,
+                email_envio: state.user.email, // Add email field
                 notas: document.getElementById('ship-notes').value,
                 total: total
             };
