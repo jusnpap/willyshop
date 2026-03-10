@@ -426,6 +426,93 @@ async function removeFromCart(id) {
     } catch (e) { }
 }
 
+async function renderCheckout() {
+    if (!state.user) {
+        openAuthModal();
+        return;
+    }
+    if (state.cart.length === 0) {
+        window.location.hash = '#/';
+        return;
+    }
+
+    const container = document.getElementById('main-content');
+    const total = state.cart.reduce((sum, item) => sum + (item.precio_oferta || item.precio) * item.cantidad, 0);
+
+    container.innerHTML = `
+        <div class="container" style="margin-top: 120px; max-width: 1000px;">
+            <h1 class="section-title" style="text-align: left;">Finalizar Compra</h1>
+            <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 40px;" class="animate-fade-up">
+                <div style="background: var(--gray-light); padding: 30px; border-radius: 4px;">
+                    <h3 style="margin-bottom: 20px; text-transform: uppercase; font-size: 16px;">Datos de Envío</h3>
+                    <form id="checkout-form">
+                        <div class="form-group">
+                            <label>Nombre Completo</label>
+                            <input type="text" id="ship-name" value="${state.user.nombre}" required>
+                        </div>
+                        <div class="form-group">
+                             <label>Dirección Exacta</label>
+                             <input type="text" id="ship-address" value="${state.user.direccion || ''}" required>
+                        </div>
+                        <div class="form-group">
+                             <label>Teléfono de Contacto</label>
+                             <input type="text" id="ship-phone" value="${state.user.telefono || ''}" required>
+                        </div>
+                        <div class="form-group">
+                             <label>Notas adicionales (Opcional)</label>
+                             <textarea id="ship-notes" rows="2"></textarea>
+                        </div>
+                        
+                        <div style="margin-top: 30px; padding: 20px; background: #fff; border-left: 4px solid var(--primary);">
+                            <p style="font-size: 13px;">Pagarás un total de <strong>${formatPrice(total)}</strong> mediante <strong>Transferencia Bancaria o Efectivo</strong> al recibir (contra entrega).</p>
+                        </div>
+                    </form>
+                </div>
+                
+                <div>
+                    <div style="background: #fff; border: 1px solid #eee; padding: 30px; position: sticky; top: 120px;">
+                        <h3 style="margin-bottom: 20px; text-transform: uppercase; font-size: 14px;">Resumen del Pedido</h3>
+                        <div style="max-height: 300px; overflow-y: auto; margin-bottom: 20px;">
+                            ${state.cart.map(item => `
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 13px;">
+                                    <span>${item.cantidad}x ${item.nombre}</span>
+                                    <span>${formatPrice((item.precio_oferta || item.precio) * item.cantidad)}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div style="border-top: 1px solid #eee; padding-top: 15px; display: flex; justify-content: space-between; font-weight: 700;">
+                            <span>TOTAL</span>
+                            <span>${formatPrice(total)}</span>
+                        </div>
+                        <button type="submit" form="checkout-form" class="btn-dark btn-premium" style="width: 100%; margin-top: 30px;">Confirmar Pedido</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.getElementById('checkout-form').onsubmit = async (e) => {
+        e.preventDefault();
+        try {
+            const orderData = {
+                nombre_envio: document.getElementById('ship-name').value,
+                direccion_envio: document.getElementById('ship-address').value,
+                telefono_envio: document.getElementById('ship-phone').value,
+                notas: document.getElementById('ship-notes').value,
+                total: total
+            };
+
+            const res = await API.post('/pedidos', orderData);
+            showToast('¡Pedido realizado con éxito!');
+            state.cart = []; // Limpiar carrito local
+            router(); // Redirigir (a home o cuenta)
+            window.location.hash = '#/cuenta';
+        } catch (err) {
+            showToast(err.message);
+        }
+    };
+}
+
 async function renderAccount() {
     if (!state.user) {
         window.location.hash = '#/';
@@ -650,6 +737,14 @@ async function deleteProduct(id) {
     } catch (e) { showToast(e.message); }
 }
 
+async function editProduct(id) {
+    showToast('Función de edición próximamente (Demo)');
+}
+
+async function openAddProductModal() {
+    showToast('Función de añadir producto próximamente (Demo)');
+}
+
 // --- Auth Modal Helpers ---
 
 function openAuthModal() {
@@ -739,6 +834,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         document.getElementById('cart-panel').classList.add('active');
         document.getElementById('overlay').classList.add('active');
+    };
+
+    document.getElementById('checkout-btn').onclick = () => {
+        closePanels();
+        window.location.hash = '#/checkout';
     };
 
     document.getElementById('close-cart').onclick = closePanels;

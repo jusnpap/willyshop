@@ -401,7 +401,8 @@ header.scrolled {
     width: 100vw;
     height: 100vh;
     background: rgba(0, 0, 0, 0.5);
-    z-index: 1999;
+    z-index: 1500;
+    /* Lower than panels but higher than header content */
     opacity: 0;
     visibility: hidden;
     transition: 0.4s;

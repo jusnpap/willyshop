@@ -1,8 +1,9 @@
 -- =============================================
--- WILLY STORE - Esquema Completo D1 (CORREGIDO)
+-- WILLY STORE - Esquema Completo D1 (RESETEO TOTAL)
 -- =============================================
 
--- Eliminar tablas existentes para asegurar consistencia
+-- Eliminar tablas existentes para evitar errores de "already exists"
+DROP TABLE IF EXISTS pedido_items;
 DROP TABLE IF EXISTS items_pedido;
 DROP TABLE IF EXISTS pedidos;
 DROP TABLE IF EXISTS carrito;
@@ -29,10 +30,10 @@ CREATE TABLE productos (
   precio_oferta REAL,
   categoria_id INTEGER,
   imagen_url TEXT,
-  genero TEXT DEFAULT 'unisex', -- 'hombre', 'mujer', 'unisex'
+  genero TEXT DEFAULT 'unisex',
   destacado INTEGER DEFAULT 0,
   nuevo INTEGER DEFAULT 0,
-  estado TEXT DEFAULT 'activo', -- 'activo', 'suspendido'
+  estado TEXT DEFAULT 'activo',
   fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (categoria_id) REFERENCES categorias(id)
 );
@@ -42,10 +43,10 @@ CREATE TABLE usuarios (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   nombre TEXT NOT NULL,
   email TEXT UNIQUE NOT NULL,
-  password_hash TEXT NOT NULL, -- Corregido: antes era 'password'
+  password_hash TEXT NOT NULL,
   telefono TEXT,
   direccion TEXT,
-  rol TEXT DEFAULT 'cliente', -- 'admin', 'cliente'
+  rol TEXT DEFAULT 'cliente',
   fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -53,7 +54,7 @@ CREATE TABLE usuarios (
 CREATE TABLE tallas (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   producto_id INTEGER,
-  nombre TEXT NOT NULL, -- 'S', 'M', 'L', 'XL'
+  nombre TEXT NOT NULL,
   stock INTEGER DEFAULT 0,
   FOREIGN KEY (producto_id) REFERENCES productos(id)
 );
@@ -85,7 +86,7 @@ CREATE TABLE pedidos (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   usuario_id INTEGER,
   total REAL NOT NULL,
-  estado TEXT DEFAULT 'pendiente', -- 'pendiente', 'procesando', 'enviado', 'entregado', 'cancelado'
+  estado TEXT DEFAULT 'pendiente',
   nombre_envio TEXT,
   direccion_envio TEXT,
   telefono_envio TEXT,
@@ -112,7 +113,7 @@ CREATE TABLE pedido_items (
 -- DATOS INICIALES (SEED DATA)
 -- =============================================
 
--- Categorías con fotos de Unsplash (Alta calidad)
+-- Categorías con fotos reales (Unsplash)
 INSERT INTO categorias (id, nombre, imagen_url) VALUES 
 (1, 'Sudaderas', 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=600'), 
 (2, 'Conjuntos', 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=600'), 
@@ -120,27 +121,24 @@ INSERT INTO categorias (id, nombre, imagen_url) VALUES
 (4, 'Chaquetas', 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=600');
 
 -- Usuario Admin (password: admin123)
--- El hash de 'admin123' usando la función simpleHash del worker
+-- Hash corregido para el worker: h_g10hvh
 INSERT INTO usuarios (id, nombre, email, password_hash, rol) VALUES 
 (1, 'Admin Willy', 'admin@willy.com', 'h_g10hvh', 'admin');
 
--- Productos (Basados en tus fotos)
+-- Productos (Ropa de tus fotos)
 INSERT INTO productos (id, nombre, descripcion, precio, precio_oferta, categoria_id, imagen_url, genero, destacado, nuevo) VALUES
-(1, 'Sudadera Urban Black Patterns', 'Sudadera negra de corte moderno con patrones geométricos en las mangas. Estilo callejero premium con cuello alto.', 45.00, NULL, 1, 'assets/p1.png', 'unisex', 1, 1),
-(2, 'Conjunto Tracksuit Blue & Beige', 'Conjunto deportivo de dos piezas en azul real y beige color-block. Máximo confort y estilo urbano.', 85.00, 75.00, 2, 'assets/p4.png', 'unisex', 1, 1),
-(3, 'Sweater Forest Green Premium', 'Sweater de tejido suave en color verde bosque con puños y cuello en blanco crema. Elegancia casual.', 35.00, NULL, 3, 'assets/p2.png', 'mujer', 0, 1),
-(4, 'Chaqueta Bomber Street Varsity', 'Chaqueta estilo bomber color negro con detalles deportivos en rayas blancas. Versátil y rebelde.', 65.00, NULL, 4, 'assets/p3.png', 'unisex', 1, 0);
+(1, 'Sudadera Urban Black Patterns', 'Sudadera negra premium con patrones artísticos en las mangas. Corte moderno.', 45.00, NULL, 1, 'assets/p1.png', 'unisex', 1, 1),
+(2, 'Conjunto Tracksuit Royal Blue', 'Conjunto deportivo azul y beige. Estilo color-block de alta gama.', 85.00, 75.00, 2, 'assets/p4.png', 'unisex', 1, 1),
+(3, 'Sweater Forest Green Premium', 'Sweater verde bosque con detalles en blanco. Elegancia minimalista.', 35.00, NULL, 3, 'assets/p2.png', 'mujer', 0, 1),
+(4, 'Chaqueta Bomber Midnight Sport', 'Chaqueta bomber negra con ribetes blancos. Estilo varsity urbano.', 65.00, NULL, 4, 'assets/p3.png', 'unisex', 1, 0);
 
--- Tallas para los productos
+-- Tallas
 INSERT INTO tallas (producto_id, nombre, stock) VALUES
 (1, 'S', 10), (1, 'M', 15), (1, 'L', 10),
 (2, 'S', 8), (2, 'M', 12), (2, 'L', 8),
 (3, 'S', 12), (3, 'M', 20), (3, 'L', 10),
 (4, 'M', 15), (4, 'L', 15), (4, 'XL', 5);
 
--- Colores para los productos
+-- Colores
 INSERT INTO colores (producto_id, nombre, hex_code) VALUES
-(1, 'Negro', '#000000'),
-(2, 'Multi', '#0026ff'),
-(3, 'Verde Bosque', '#2d5a27'),
-(4, 'Negro Sport', '#1a1a1a');
+(1, 'Negro', '#000000'), (2, 'Multicolor', '#0026ff'), (3, 'Verde', '#2d5a27'), (4, 'Negro', '#1a1a1a');
