@@ -1,0 +1,11 @@
+name = "willy-store"
+compatibility_date = "2024-09-25"
+main = "src/index.js"
+
+[assets]
+directory = "./public"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "willy-store-db"
+database_id = "LOCAL"

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WILLY STORE | Colección Oficial</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header id="main-header">
+            <div class="nav-toggle" id="menu-toggle">
+                <i class="fas fa-bars"></i>
+            </div>
+
+            <nav class="nav-menu">
+                <a href="#/" class="nav-link">Inicio</a>
+                <a href="#/catalogo?genero=mujer" class="nav-link">Mujer</a>
+                <a href="#/catalogo?genero=hombre" class="nav-link">Hombre</a>
+                <a href="#/catalogo?nuevo=1" class="nav-link">Novedades</a>
+            </nav>
+
+            <a href="#/" class="logo" style="display: flex; align-items: center; gap: 15px;">
+                <img src="assets/logo.png" alt="Logo" style="height: 40px; width: auto;">
+                <span style="font-size: 24px; font-weight: 800; letter-spacing: 5px; text-transform: uppercase;">Willy
+                    Shop</span>
+            </a>
+
+            <div class="nav-actions">
+                <div class="search-btn nav-icon"><i class="fas fa-search"></i></div>
+                <div class="user-btn nav-icon" id="user-btn"><i class="far fa-user"></i></div>
+                <div class="cart-btn nav-icon" id="cart-btn">
+                    <i class="fas fa-shopping-bag"></i>
+                    <span class="cart-count" id="cart-count">0</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main id="main-content">
+            <!-- Pagina Cargada Dinamicamente -->
+        </main>
+
+        <!-- Footer -->
+        <footer id="main-footer"></footer>
+
+        <!-- Panels & Overlays -->
+        <div class="panel-overlay" id="overlay"></div>
+
+        <!-- Cart Side Panel -->
+        <div class="side-panel" id="cart-panel">
+            <div class="panel-header">
+                <h3 class="panel-title">Carrito</h3>
+                <button class="panel-close" id="close-cart"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="panel-content" id="cart-items">
+                <!-- Cart items here -->
+            </div>
+            <div class="panel-footer" id="cart-footer">
+                <div class="cart-total"
+                    style="display: flex; justify-content: space-between; margin-bottom: 20px; font-weight: 700;">
+                    <span>TOTAL</span>
+                    <span id="cart-total-val">$0.00</span>
+                </div>
+                <button class="btn-dark btn-premium" style="width: 100%;" id="checkout-btn">Finalizar Compra</button>
+            </div>
+        </div>
+
+        <!-- Menu Side Panel (Mobile) -->
+        <div class="side-panel" id="menu-panel" style="left: 0; transform: translateX(-100%);">
+            <div class="panel-header">
+                <h3 class="panel-title">Menú</h3>
+                <button class="panel-close" id="close-menu"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="panel-content">
+                <ul class="mobile-nav">
+                    <li><a href="#/catalogo?genero=mujer">MUJER</a></li>
+                    <li><a href="#/catalogo?genero=hombre">HOMBRE</a></li>
+                    <li><a href="#/catalogo?nuevo=1">NOVEDADES</a></li>
+                    <li style="margin-top: 40px;"><a href="#/admin" id="admin-link">ADMINISTRACIÓN</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Modals -->
+        <div class="modal" id="auth-modal">
+            <div class="modal-content">
+                <button class="panel-close" style="position: absolute; top: 20px; right: 20px;"
+                    onclick="closeModal('auth-modal')"><i class="fas fa-times"></i></button>
+                <div id="auth-forms">
+                    <!-- Login/Signup forms -->
+                </div>
+            </div>
+        </div>
+
+        <!-- WhatsApp Float -->
+        <a href="https://wa.me/593980862064" target="_blank" class="whatsapp-btn" title="Contactar por WhatsApp">
+            <i class="fab fa-whatsapp"></i>
+        </a>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>

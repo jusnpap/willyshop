@@ -1,0 +1,669 @@
+/**
+ * WILLY STORE - Main SPA Application
+ */
+
+// --- State Management ---
+const state = {
+    user: JSON.parse(localStorage.getItem('willy_user')),
+    token: localStorage.getItem('willy_token'),
+    cart: [],
+    categories: [],
+    currentView: 'home',
+    params: {}
+};
+
+// --- API Helpers ---
+const API = {
+    async request(path, options = {}) {
+        const headers = {
+            'Content-Type': 'application/json',
+            ...(state.token ? { 'Authorization': `Bearer ${state.token}` } : {}),
+            ...options.headers
+        };
+
+        const response = await fetch(`/api${path}`, { ...options, headers });
+        const data = await response.json();
+
+        if (response.status === 401) {
+            logout();
+        }
+
+        if (!response.ok) throw new Error(data.error || 'Algo salió mal');
+        return data;
+    },
+    get: (path) => API.request(path),
+    post: (path, body) => API.request(path, { method: 'POST', body: JSON.stringify(body) }),
+    put: (path, body) => API.request(path, { method: 'PUT', body: JSON.stringify(body) }),
+    patch: (path, body) => API.request(path, { method: 'PATCH', body: JSON.stringify(body) }),
+    delete: (path) => API.request(path, { method: 'DELETE' })
+};
+
+// --- Utils ---
+const formatPrice = (p) => new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD' }).format(p);
+
+function showToast(msg) {
+    // Simple basic toast for now
+    alert(msg);
+}
+
+// --- Router ---
+function router() {
+    const hash = window.location.hash || '#/';
+    const path = hash.split('?')[0];
+    const searchParams = new URLSearchParams(hash.split('?')[1] || '');
+
+    state.params = Object.fromEntries(searchParams.entries());
+
+    // Close panels on route change
+    closePanels();
+
+    if (path === '#/') renderHome();
+    else if (path.startsWith('#/catalogo')) renderCatalog();
+    else if (path.startsWith('#/producto/')) renderProduct(path.split('/').pop());
+    else if (path === '#/checkout') renderCheckout();
+    else if (path === '#/cuenta') renderAccount();
+    else if (path.startsWith('#/admin')) renderAdmin();
+    else renderHome();
+
+    // Update header style
+    const header = document.getElementById('main-header');
+    if (path === '#/') {
+        header.classList.remove('scrolled');
+    } else {
+        header.classList.add('scrolled');
+    }
+}
+
+// --- Authentication ---
+async function login(email, password) {
+    try {
+        const data = await API.post('/auth/login', { email, password });
+        state.user = data.user;
+        state.token = data.token;
+        localStorage.setItem('willy_user', JSON.stringify(data.user));
+        localStorage.setItem('willy_token', data.token);
+        closeModal('auth-modal');
+        updateUI();
+        router();
+    } catch (err) {
+        showToast(err.message);
+    }
+}
+
+function logout() {
+    state.user = null;
+    state.token = null;
+    localStorage.removeItem('willy_user');
+    localStorage.removeItem('willy_token');
+    updateUI();
+    window.location.hash = '#/';
+}
+
+// --- UI Components ---
+
+function updateUI() {
+    const cartCount = document.getElementById('cart-count');
+    const userBtn = document.getElementById('user-btn');
+
+    // Update cart counter
+    cartCount.innerText = state.cart.reduce((sum, item) => sum + item.cantidad, 0);
+
+    // Update user icon
+    if (state.user) {
+        userBtn.innerHTML = `<i class="fas fa-user"></i>`;
+        userBtn.title = `Hola, ${state.user.nombre}`;
+    } else {
+        userBtn.innerHTML = `<i class="far fa-user"></i>`;
+    }
+}
+
+function closePanels() {
+    document.getElementById('cart-panel').classList.remove('active');
+    document.getElementById('menu-panel').classList.remove('active');
+    document.getElementById('overlay').classList.remove('active');
+}
+
+function closeModal(id) {
+    document.getElementById(id).classList.remove('active');
+}
+
+function openModal(id) {
+    document.getElementById(id).classList.add('active');
+}
+
+// --- Views Rendering ---
+
+async function renderHome() {
+    const container = document.getElementById('main-content');
+    container.innerHTML = `
+        <section class="hero">
+            <div class="hero-bg" style="background-image: url('https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?q=80&w=2070')"></div>
+            <div class="hero-content">
+                <h1 class="hero-title animate-fade-up">Spring / Summer</h1>
+                <p style="margin-bottom: 30px; letter-spacing: 2px;" class="animate-fade-up">COLECCIÓN 2026</p>
+                <div style="display: flex; gap: 20px; justify-content: center;" class="animate-fade-up">
+                    <a href="#/catalogo?genero=mujer" class="btn-premium">Ver Mujer</a>
+                    <a href="#/catalogo?genero=hombre" class="btn-premium">Ver Hombre</a>
+                </div>
+            </div>
+        </section>
+
+        <section class="container" style="margin-top: 80px;">
+            <h2 class="section-title">Categorías</h2>
+            <div class="categories-grid" id="home-categories">
+                <!-- Loaded from API -->
+                <div class="category-card animate-fade-up">
+                    <img src="https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=600" class="category-img">
+                    <div class="category-info">
+                        <h3 class="category-name">Camisetas</h3>
+                        <a href="#/catalogo?categoria=1" class="btn-premium">Descubrir</a>
+                    </div>
+                </div>
+                <!-- ... other items ... -->
+            </div>
+        </section>
+    `;
+
+    // Fetch categories to populate
+    try {
+        const cats = await API.get('/categorias');
+        const catGrid = document.getElementById('home-categories');
+        if (cats.length > 0) {
+            catGrid.innerHTML = cats.map(cat => `
+                <div class="category-card animate-fade-up">
+                    <img src="${cat.imagen_url}" class="category-img">
+                    <div class="category-info">
+                        <h3 class="category-name">${cat.nombre}</h3>
+                        <a href="#/catalogo?categoria=${cat.id}" class="btn-premium">Descubrir</a>
+                    </div>
+                </div>
+            `).join('');
+        }
+    } catch (e) { }
+}
+
+async function renderCatalog() {
+    const container = document.getElementById('main-content');
+    const { genero, categoria, nuevo, busqueda } = state.params;
+
+    let title = 'Catálogo';
+    if (genero) title = genero === 'mujer' ? 'Mujer' : 'Hombre';
+    if (nuevo) title = 'Novedades';
+    if (busqueda) title = `Resultados: ${busqueda}`;
+
+    container.innerHTML = `
+        <div class="container" style="margin-top: 120px;">
+            <h1 class="section-title" style="margin-top: 0; text-align: left;">${title}</h1>
+            <div class="products-grid" id="products-list">
+                <p>Cargando productos...</p>
+            </div>
+        </div>
+    `;
+
+    try {
+        const query = new URLSearchParams(state.params).toString();
+        const products = await API.get(`/productos?${query}`);
+        const list = document.getElementById('products-list');
+
+        if (products.length === 0) {
+            list.innerHTML = '<p>No se encontraron productos en esta sección.</p>';
+            return;
+        }
+
+        list.innerHTML = products.map(p => `
+            <div class="product-card animate-fade-up">
+                <a href="#/producto/${p.id}">
+                    <div class="product-img-wrapper">
+                        <img src="${p.imagen_url}" class="product-img" loading="lazy">
+                        <div class="product-badges">
+                            ${p.nuevo ? '<span class="badge badge-new">Nuevo</span>' : ''}
+                            ${p.precio_oferta ? '<span class="badge badge-sale">Oferta</span>' : ''}
+                        </div>
+                    </div>
+                    <div class="product-info">
+                        <h3 class="product-name">${p.nombre}</h3>
+                        <p class="product-price">
+                            ${p.precio_oferta ? `<span class="price-old">${formatPrice(p.precio)}</span><span class="price-new">${formatPrice(p.precio_oferta)}</span>` : formatPrice(p.precio)}
+                        </p>
+                    </div>
+                </a>
+            </div>
+        `).join('');
+    } catch (err) {
+        document.getElementById('products-list').innerHTML = `<p>Error: ${err.message}</p>`;
+    }
+}
+
+async function renderProduct(id) {
+    const container = document.getElementById('main-content');
+    container.innerHTML = `<div class="container" style="margin-top: 120px;"><p>Cargando...</p></div>`;
+
+    try {
+        const p = await API.get(`/productos/${id}`);
+        container.innerHTML = `
+            <div class="container" style="margin-top: 120px;">
+                <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 60px;">
+                    <div class="product-gallery">
+                        <img src="${p.imagen_url}" style="width: 100%; height: 800px; object-fit: cover;">
+                        <!-- Extra images would go here -->
+                    </div>
+                    <div class="product-details">
+                        <div style="position: sticky; top: 120px;">
+                            <span style="font-size: 12px; color: var(--gray-medium); text-transform: uppercase;">${p.categoria_nombre} | ${p.genero}</span>
+                            <h1 style="font-size: 32px; font-weight: 300; margin: 10px 0; text-transform: uppercase; letter-spacing: 2px;">${p.nombre}</h1>
+                            <p style="font-size: 20px; font-weight: 600; margin-bottom: 30px;">
+                                ${p.precio_oferta ? `<span class="price-old">${formatPrice(p.precio)}</span><span class="price-new">${formatPrice(p.precio_oferta)}</span>` : formatPrice(p.precio)}
+                            </p>
+                            
+                            <p style="color: var(--gray-dark); margin-bottom: 40px; font-size: 14px; line-height: 1.8;">${p.descripcion}</p>
+
+                            <div class="selectors" style="margin-bottom: 40px;">
+                                <div style="margin-bottom: 20px;">
+                                    <label>Talla</label>
+                                    <div style="display: flex; gap: 10px;" id="size-selector">
+                                        ${p.tallas.map(t => `<button class="size-btn ${t.stock <= 0 ? 'disabled' : ''}" data-id="${t.id}" ${t.stock <= 0 ? 'disabled' : ''} style="padding: 10px 20px; border: 1px solid #ddd;">${t.nombre}</button>`).join('')}
+                                    </div>
+                                </div>
+                                ${p.colores.length > 0 ? `
+                                <div>
+                                    <label>Color</label>
+                                    <div style="display: flex; gap: 10px;" id="color-selector">
+                                        ${p.colores.map(c => `<button class="color-dot" data-id="${c.id}" title="${c.nombre}" style="width: 30px; height: 30px; border-radius: 50%; background: ${c.hex_code}; border: 2px solid #fff; box-shadow: 0 0 0 1px #ddd;"></button>`).join('')}
+                                    </div>
+                                </div>` : ''}
+                            </div>
+
+                            <button class="btn-dark btn-premium" style="width: 100%;" id="add-to-cart-btn" ${p.tallas.every(t => t.stock <= 0) ? 'disabled' : ''}>
+                                ${p.tallas.every(t => t.stock <= 0) ? 'Agotado' : 'Añadir a la Cesta'}
+                            </button>
+                            
+                            <div style="margin-top: 40px; padding-top: 40px; border-top: 1px solid var(--gray-light); font-size: 12px; color: var(--gray-medium);">
+                                <p><i class="fas fa-shipping-fast" style="margin-right: 10px;"></i> Envíos gratuitos en pedidos superiores a $50</p>
+                                <p style="margin-top: 10px;"><i class="fas fa-undo" style="margin-right: 10px;"></i> Devoluciones gratuitas hasta 30 días</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Selectors Logic
+        let selectedTalla = null;
+        let selectedColor = p.colores[0]?.id || null;
+
+        document.querySelectorAll('.size-btn').forEach(btn => {
+            btn.onclick = () => {
+                document.querySelectorAll('.size-btn').forEach(b => b.style.borderColor = '#ddd');
+                btn.style.borderColor = 'var(--primary)';
+                selectedTalla = btn.dataset.id;
+            };
+        });
+
+        document.querySelectorAll('.color-dot').forEach(btn => {
+            btn.onclick = () => {
+                document.querySelectorAll('.color-dot').forEach(b => b.style.transform = 'scale(1)');
+                btn.style.transform = 'scale(1.2)';
+                selectedColor = btn.dataset.id;
+            };
+        });
+
+        document.getElementById('add-to-cart-btn').onclick = async () => {
+            if (!state.user) {
+                openAuthModal();
+                return;
+            }
+            if (!selectedTalla && p.tallas.length > 0) {
+                showToast('Por favor selecciona una talla');
+                return;
+            }
+            try {
+                await API.post('/carrito', {
+                    producto_id: p.id,
+                    talla_id: selectedTalla,
+                    color_id: selectedColor,
+                    cantidad: 1
+                });
+                await loadCart();
+                document.getElementById('cart-panel').classList.add('active');
+                document.getElementById('overlay').classList.add('active');
+            } catch (err) {
+                showToast(err.message);
+            }
+        };
+
+    } catch (err) {
+        container.innerHTML = `<div class="container" style="margin-top: 120px;"><p>Error: ${err.message}</p></div>`;
+    }
+}
+
+// --- Cart Logic ---
+
+async function loadCart() {
+    if (!state.user) return;
+    try {
+        state.cart = await API.get('/carrito');
+        renderCartUI();
+        updateUI();
+    } catch (e) { }
+}
+
+function renderCartUI() {
+    const list = document.getElementById('cart-items');
+    const totalVal = document.getElementById('cart-total-val');
+
+    if (state.cart.length === 0) {
+        list.innerHTML = '<p style="text-align: center; margin-top: 40px; color: var(--gray-medium);">El carrito está vacío</p>';
+        totalVal.innerText = '$0.00';
+        return;
+    }
+
+    let total = 0;
+    list.innerHTML = state.cart.map(item => {
+        const precio = item.precio_oferta || item.precio;
+        total += precio * item.cantidad;
+        return `
+            <div class="cart-item">
+                <img src="${item.imagen_url}" class="cart-item-img">
+                <div class="cart-item-info">
+                    <h4 class="cart-item-name">${item.nombre}</h4>
+                    <p class="cart-item-meta">${item.talla_nombre || ''} ${item.color_nombre ? '| ' + item.color_nombre : ''}</p>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 14px; font-weight: 600;">${formatPrice(precio)}</span>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <button onclick="updateCartQty(${item.id}, ${item.cantidad - 1})"><i class="fas fa-minus"></i></button>
+                            <span style="font-size: 13px;">${item.cantidad}</span>
+                            <button onclick="updateCartQty(${item.id}, ${item.cantidad + 1})"><i class="fas fa-plus"></i></button>
+                        </div>
+                        <button onclick="removeFromCart(${item.id})" style="color: var(--gray-medium);"><i class="far fa-trash-alt"></i></button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    totalVal.innerText = formatPrice(total);
+}
+
+async function updateCartQty(id, qty) {
+    if (qty < 1) return removeFromCart(id);
+    try {
+        await API.put(`/carrito/${id}`, { cantidad: qty });
+        await loadCart();
+    } catch (e) { }
+}
+
+async function removeFromCart(id) {
+    try {
+        await API.delete(`/carrito/${id}`);
+        await loadCart();
+    } catch (e) { }
+}
+
+// --- Admin Views ---
+
+async function renderAdmin() {
+    if (!state.user || state.user.rol !== 'admin') {
+        window.location.hash = '#/';
+        return;
+    }
+
+    const container = document.getElementById('main-content');
+    container.innerHTML = `
+        <div class="admin-container">
+            <aside class="admin-sidebar">
+                <h2 style="font-size: 18px; margin-bottom: 40px; text-transform: uppercase;">Admin Panel</h2>
+                <a href="#/admin" class="admin-nav-item active" id="nav-dash">Dashboard</a>
+                <a href="#/admin/productos" class="admin-nav-item" id="nav-prods">Productos</a>
+                <a href="#/admin/pedidos" class="admin-nav-item" id="nav-pedidos">Pedidos</a>
+                <div style="margin-top: 40px;">
+                    <button onclick="logout()" class="admin-nav-item">Cerrar Sesión</button>
+                </div>
+            </aside>
+            <main class="admin-main" id="admin-subview">
+                <!-- Dashboard content here -->
+            </main>
+        </div>
+    `;
+
+    const subview = window.location.hash.split('/')[2] || 'dash';
+    if (subview === 'dash') renderAdminDash();
+    else if (subview === 'productos') renderAdminProducts();
+    else if (subview === 'pedidos') renderAdminOrders();
+}
+
+async function renderAdminDash() {
+    const sub = document.getElementById('admin-subview');
+    sub.innerHTML = '<p>Cargando estadísticas...</p>';
+
+    try {
+        const stats = await API.get('/admin/stats');
+        sub.innerHTML = `
+            <h1 style="margin-bottom: 40px;">Dashboard</h1>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-val">${stats.ventasTotales ? formatPrice(stats.ventasTotales) : '$0'}</div>
+                    <div class="stat-label">Ventas Totales</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-val">${stats.totalPedidos}</div>
+                    <div class="stat-label">Pedidos</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-val">${stats.totalProductos}</div>
+                    <div class="stat-label">Productos</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-val">${stats.pedidosPendientes}</div>
+                    <div class="stat-label">Pendientes</div>
+                </div>
+            </div>
+            <!-- More metrics could go here -->
+        `;
+    } catch (e) {
+        sub.innerHTML = `<p>Error: ${e.message}</p>`;
+    }
+}
+
+async function renderAdminProducts() {
+    const sub = document.getElementById('admin-subview');
+    sub.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px;">
+            <h1>Productos</h1>
+            <button class="btn-dark" style="padding: 10px 20px;" onclick="openAddProductModal()">+ Nuevo Producto</button>
+        </div>
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="text-align: left; border-bottom: 2px solid #ddd;">
+                    <th style="padding: 15px;">Producto</th>
+                    <th>Categoría</th>
+                    <th>Precio</th>
+                    <th>Estado</th>
+                    <th>Tallas/Stock</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="admin-product-list">
+                <!-- Products here -->
+            </tbody>
+        </table>
+    `;
+
+    try {
+        const products = await API.get('/admin/productos');
+        const list = document.getElementById('admin-product-list');
+        list.innerHTML = products.map(p => {
+            const tallasArr = p.tallas_info ? p.tallas_info.split('|').map(t => {
+                const [n, s, id] = t.split(':');
+                return `<span title="ID: ${id}" style="font-size: 10px; background: #eee; padding: 2px 5px; margin-right: 2px;">${n}:${s}</span>`;
+            }).join('') : 'Sin tallas';
+
+            return `
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 15px; display: flex; align-items: center; gap: 10px;">
+                        <img src="${p.imagen_url}" style="width: 40px; height: 50px; object-fit: cover;">
+                        <div>
+                            <div style="font-weight: 600; font-size: 14px;">${p.nombre}</div>
+                            <div style="font-size: 11px; color: #888;">ID: ${p.id}</div>
+                        </div>
+                    </td>
+                    <td>${p.categoria_nombre || 'S/C'}</td>
+                    <td>${formatPrice(p.precio)}</td>
+                    <td>
+                        <span style="padding: 3px 8px; border-radius: 10px; font-size: 10px; text-transform: uppercase; background: ${p.estado === 'activo' ? '#e1f5fe' : '#ffebee'}; color: ${p.estado === 'activo' ? '#01579b' : '#c62828'};">
+                            ${p.estado}
+                        </span>
+                    </td>
+                    <td>${tallasArr}</td>
+                    <td>
+                        <button onclick="toggleProductStatus(${p.id}, '${p.estado}')" title="${p.estado === 'activo' ? 'Suspender' : 'Activar'}">
+                            <i class="fas ${p.estado === 'activo' ? 'fa-eye-slash' : 'fa-eye'}"></i>
+                        </button>
+                        <button onclick="editProduct(${p.id})" style="margin: 0 10px;"><i class="fas fa-edit"></i></button>
+                        <button onclick="deleteProduct(${p.id})" style="color: #c62828;"><i class="fas fa-trash"></i></button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    } catch (e) { }
+}
+
+async function toggleProductStatus(id, current) {
+    const next = current === 'activo' ? 'suspendido' : 'activo';
+    if (!confirm(`¿Deseas ${next === 'activo' ? 'activar' : 'suspender'} este producto?`)) return;
+    try {
+        await API.patch(`/admin/productos/${id}/estado`, { estado: next });
+        renderAdminProducts();
+    } catch (e) { showToast(e.message); }
+}
+
+async function deleteProduct(id) {
+    if (!confirm('¿Seguro que quieres eliminar este producto? Esta acción no se puede deshacer.')) return;
+    try {
+        await API.delete(`/admin/productos/${id}`);
+        renderAdminProducts();
+    } catch (e) { showToast(e.message); }
+}
+
+// --- Auth Modal Helpers ---
+
+function openAuthModal() {
+    const modal = document.getElementById('auth-modal');
+    const container = document.getElementById('auth-forms');
+
+    container.innerHTML = `
+        <h2 style="text-align: center; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 30px;">Iniciar Sesión</h2>
+        <form id="login-form">
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="login-email" required>
+            </div>
+            <div class="form-group">
+                <label>Contraseña</label>
+                <input type="password" id="login-pass" required>
+            </div>
+            <button class="btn-dark btn-premium" style="width: 100%;" type="submit">Entrar</button>
+        </form>
+        <p style="text-align: center; margin-top: 20px; font-size: 12px;">¿No tienes cuenta? <a href="javascript:void(0)" onclick="showRegister()" style="text-decoration: underline;">Regístrate</a></p>
+    `;
+
+    document.getElementById('login-form').onsubmit = (e) => {
+        e.preventDefault();
+        login(document.getElementById('login-email').value, document.getElementById('login-pass').value);
+    };
+
+    modal.classList.add('active');
+}
+
+function showRegister() {
+    const container = document.getElementById('auth-forms');
+    container.innerHTML = `
+        <h2 style="text-align: center; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 30px;">Crear Cuenta</h2>
+        <form id="reg-form">
+            <div class="form-group">
+                <label>Nombre Completo</label>
+                <input type="text" id="reg-name" required>
+            </div>
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="reg-email" required>
+            </div>
+            <div class="form-group">
+                <label>Contraseña</label>
+                <input type="password" id="reg-pass" required>
+            </div>
+            <button class="btn-dark btn-premium" style="width: 100%;" type="submit">Registrarse</button>
+        </form>
+        <p style="text-align: center; margin-top: 20px; font-size: 12px;">¿Ya tienes cuenta? <a href="javascript:void(0)" onclick="openAuthModal()" style="text-decoration: underline;">Inicia Sesión</a></p>
+    `;
+
+    document.getElementById('reg-form').onsubmit = async (e) => {
+        e.preventDefault();
+        try {
+            const name = document.getElementById('reg-name').value;
+            const email = document.getElementById('reg-email').value;
+            const pass = document.getElementById('reg-pass').value;
+            const data = await API.post('/auth/registro', { nombre: name, email, password: pass });
+            state.user = data.user;
+            state.token = data.token;
+            localStorage.setItem('willy_user', JSON.stringify(data.user));
+            localStorage.setItem('willy_token', data.token);
+            closeModal('auth-modal');
+            updateUI();
+            router();
+        } catch (err) {
+            showToast(err.message);
+        }
+    };
+}
+
+// --- Initialization ---
+
+window.addEventListener('hashchange', router);
+
+document.addEventListener('DOMContentLoaded', () => {
+    router();
+    updateUI();
+    loadCart();
+
+    // Event Listeners
+    document.getElementById('cart-btn').onclick = () => {
+        if (!state.user) {
+            openAuthModal();
+            return;
+        }
+        document.getElementById('cart-panel').classList.add('active');
+        document.getElementById('overlay').classList.add('active');
+    };
+
+    document.getElementById('close-cart').onclick = closePanels;
+    document.getElementById('overlay').onclick = closePanels;
+    document.getElementById('menu-toggle').onclick = () => {
+        document.getElementById('menu-panel').classList.add('active');
+        document.getElementById('overlay').classList.add('active');
+    };
+    document.getElementById('close-menu').onclick = closePanels;
+
+    document.getElementById('user-btn').onclick = () => {
+        if (state.user) window.location.hash = '#/cuenta';
+        else openAuthModal();
+    };
+
+    // Global scroll listener for header effect
+    window.addEventListener('scroll', () => {
+        const header = document.getElementById('main-header');
+        if (window.scrollY > 50) {
+            header.classList.add('scrolled');
+        } else if (window.location.hash === '#/' || window.location.hash === '') {
+            header.classList.remove('scrolled');
+        }
+    });
+});
+
+// Exposed globally for onclicks
+window.updateCartQty = updateCartQty;
+window.removeFromCart = removeFromCart;
+window.toggleProductStatus = toggleProductStatus;
+window.deleteProduct = deleteProduct;
+window.showRegister = showRegister;
+window.openAuthModal = openAuthModal;
+window.logout = logout;
