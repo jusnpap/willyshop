@@ -265,7 +265,7 @@ async function renderCatalog() {
             return;
         }
 
-        list.innerHTML = products.map(p => `
+        list.innerHTML = products.map((p, i) => `
             <div class="product-card reveal reveal-up" style="transition-delay: ${i * 0.1}s">
                 <a href="#/producto/${p.id}">
                     <div class="product-img-wrapper">
@@ -284,6 +284,7 @@ async function renderCatalog() {
                 </a>
             </div>
         `).join('');
+        initScrollReveal();
     } catch (err) {
         document.getElementById('products-list').innerHTML = `<p>Error: ${err.message}</p>`;
     }
@@ -1189,7 +1190,6 @@ function showRegister() {
 // function updateUI() was here, moved to top
 
 function initScrollReveal() {
-    // If IntersectionObserver is not supported, show everything
     if (!('IntersectionObserver' in window)) {
         document.querySelectorAll('.reveal').forEach(el => el.classList.add('active'));
         return;
@@ -1199,12 +1199,18 @@ function initScrollReveal() {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
                 entry.target.classList.add('active');
-                observer.unobserve(entry.target); // Unobserve after revealing to prevent repeated cycles
+                observer.unobserve(entry.target);
             }
         });
     }, { threshold: 0.05 });
 
-    document.querySelectorAll('.reveal:not(.active)').forEach(el => observer.observe(el));
+    const items = document.querySelectorAll('.reveal:not(.active)');
+    items.forEach(el => observer.observe(el));
+
+    // Safety Fallback: Force reveal after 2 seconds if something went wrong
+    setTimeout(() => {
+        document.querySelectorAll('.reveal:not(.active)').forEach(el => el.classList.add('active'));
+    }, 2000);
 }
 
 // --- Initialization ---
