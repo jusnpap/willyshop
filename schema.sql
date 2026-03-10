@@ -16,6 +16,7 @@ DROP TABLE IF EXISTS categorias;
 CREATE TABLE categorias (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   nombre TEXT NOT NULL,
+  imagen_url TEXT,
   activa INTEGER DEFAULT 1
 );
 
@@ -111,9 +112,12 @@ CREATE TABLE pedido_items (
 -- DATOS INICIALES (SEED DATA)
 -- =============================================
 
--- Categorías
-INSERT INTO categorias (id, nombre) VALUES 
-(1, 'Sudaderas'), (2, 'Conjuntos'), (3, 'Suéteres'), (4, 'Chaquetas');
+-- Categorías con fotos de Unsplash (Alta calidad)
+INSERT INTO categorias (id, nombre, imagen_url) VALUES 
+(1, 'Sudaderas', 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=600'), 
+(2, 'Conjuntos', 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=600'), 
+(3, 'Suéteres', 'https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?w=600'), 
+(4, 'Chaquetas', 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=600');
 
 -- Usuario Admin (password: admin123)
 -- El hash de 'admin123' usando la función simpleHash del worker

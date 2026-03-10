@@ -436,6 +436,24 @@ header.scrolled {
     padding: 30px;
 }
 
+/* Account Panel Spacing */
+#account-panel .mobile-nav li {
+    margin-bottom: 15px;
+}
+
+#account-panel .mobile-nav a {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    font-size: 14px;
+    padding: 10px 0;
+    transition: var(--transition-smooth);
+}
+
+#account-panel .mobile-nav a:hover {
+    padding-left: 10px;
+}
+
 .panel-footer {
     padding: 30px;
     border-top: 1px solid var(--gray-light);

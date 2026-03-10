@@ -106,7 +106,9 @@ function updateUI() {
     const userBtn = document.getElementById('user-btn');
 
     // Update cart counter
-    cartCount.innerText = state.cart.reduce((sum, item) => sum + item.cantidad, 0);
+    const totalItems = state.cart.reduce((sum, item) => sum + item.cantidad, 0);
+    cartCount.innerText = totalItems;
+    cartCount.style.display = totalItems > 0 ? 'flex' : 'none';
 
     // Update user icon
     if (state.user) {
@@ -120,6 +122,7 @@ function updateUI() {
 function closePanels() {
     document.getElementById('cart-panel').classList.remove('active');
     document.getElementById('menu-panel').classList.remove('active');
+    document.getElementById('account-panel').classList.remove('active');
     document.getElementById('overlay').classList.remove('active');
 }
 
@@ -129,6 +132,34 @@ function closeModal(id) {
 
 function openModal(id) {
     document.getElementById(id).classList.add('active');
+}
+
+function openAccountPanel() {
+    const container = document.getElementById('account-menu-content');
+    const isAdmin = state.user && state.user.rol === 'admin';
+
+    container.innerHTML = `
+        <div style="padding: 20px 0;">
+            <div style="margin-bottom: 30px; text-align: center;">
+                <div style="width: 60px; height: 60px; background: #eee; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px; font-size: 24px; color: var(--primary);">
+                    <i class="fas fa-user"></i>
+                </div>
+                <h4 style="margin: 0; font-size: 18px;">${state.user.nombre}</h4>
+                <p style="margin: 5px 0 0; font-size: 12px; color: var(--gray-medium);">${state.user.email}</p>
+            </div>
+            
+            <ul class="mobile-nav" style="border-top: 1px solid #eee; padding-top: 20px;">
+                <li><a href="#/cuenta"><i class="fas fa-user-edit" style="width: 25px;"></i> EDITAR INFORMACIÓN</a></li>
+                ${isAdmin ? `<li><a href="#/admin" style="color: var(--primary); font-weight: 700;"><i class="fas fa-user-shield" style="width: 25px;"></i> PANEL DE ADMIN</a></li>` : ''}
+                <li style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px;">
+                    <a href="javascript:void(0)" onclick="logout()" style="color: #c62828;"><i class="fas fa-sign-out-alt" style="width: 25px;"></i> CERRAR SESIÓN</a>
+                </li>
+            </ul>
+        </div>
+    `;
+
+    document.getElementById('account-panel').classList.add('active');
+    document.getElementById('overlay').classList.add('active');
 }
 
 // --- Views Rendering ---
@@ -151,35 +182,31 @@ async function renderHome() {
         <section class="container" style="margin-top: 80px;">
             <h2 class="section-title">Categorías</h2>
             <div class="categories-grid" id="home-categories">
-                <!-- Loaded from API -->
-                <div class="category-card animate-fade-up">
-                    <img src="https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=600" class="category-img">
-                    <div class="category-info">
-                        <h3 class="category-name">Camisetas</h3>
-                        <a href="#/catalogo?categoria=1" class="btn-premium">Descubrir</a>
-                    </div>
-                </div>
-                <!-- ... other items ... -->
+                <p style="text-align: center; grid-column: 1/-1;">Cargando categorías...</p>
             </div>
         </section>
     `;
 
-    // Fetch categories to populate
     try {
         const cats = await API.get('/categorias');
         const catGrid = document.getElementById('home-categories');
-        if (cats.length > 0) {
+        if (cats && cats.length > 0) {
             catGrid.innerHTML = cats.map(cat => `
                 <div class="category-card animate-fade-up">
-                    <img src="${cat.imagen_url}" class="category-img">
+                    <img src="${cat.imagen_url || 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=600'}" class="category-img" onerror="this.src='https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=600'">
                     <div class="category-info">
                         <h3 class="category-name">${cat.nombre}</h3>
                         <a href="#/catalogo?categoria=${cat.id}" class="btn-premium">Descubrir</a>
                     </div>
                 </div>
             `).join('');
+        } else {
+            catGrid.innerHTML = '<p style="text-align: center; grid-column: 1/-1;">No hay categorías disponibles.</p>';
         }
-    } catch (e) { }
+    } catch (e) {
+        console.error('Error loading categories:', e);
+        document.getElementById('home-categories').innerHTML = '<p style="text-align: center; grid-column: 1/-1;">Error al cargar categorías.</p>';
+    }
 }
 
 async function renderCatalog() {
@@ -397,6 +424,85 @@ async function removeFromCart(id) {
         await API.delete(`/carrito/${id}`);
         await loadCart();
     } catch (e) { }
+}
+
+async function renderAccount() {
+    if (!state.user) {
+        window.location.hash = '#/';
+        return;
+    }
+
+    const container = document.getElementById('main-content');
+    container.innerHTML = `
+        <div class="container" style="margin-top: 120px; max-width: 800px;">
+            <h1 class="section-title" style="text-align: left;">Mi Información</h1>
+            
+            <div id="account-view" class="animate-fade-up">
+                <div style="background: var(--gray-light); padding: 40px; border-radius: 4px;">
+                    <form id="profile-form">
+                        <div class="form-group">
+                            <label>Nombre Completo</label>
+                            <input type="text" id="prof-name" value="${state.user.nombre}" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" value="${state.user.email}" disabled style="background: #eee; cursor: not-allowed;">
+                        </div>
+                        <div class="form-group">
+                            <label>Teléfono</label>
+                            <input type="text" id="prof-phone" value="${state.user.telefono || ''}" placeholder="Ej: +593 ...">
+                        </div>
+                        <div class="form-group">
+                            <label>Dirección de Envío</label>
+                            <textarea id="prof-address" rows="3" placeholder="Tu dirección principal...">${state.user.direccion || ''}</textarea>
+                        </div>
+                        
+                        <div style="display: flex; gap: 20px; margin-top: 30px;">
+                            <button type="submit" class="btn-dark btn-premium" style="flex: 1;">Guardar Cambios</button>
+                            <button type="button" onclick="logout()" class="btn-premium" style="color: #c62828; border-color: #c62828;">Cerrar Sesión</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div style="margin-top: 60px;">
+                    <h2 style="font-size: 18px; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px;">Mis Pedidos Recientes</h2>
+                    <div id="user-orders-list">
+                        <p style="color: var(--gray-medium);">Cargando pedidos...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Order list logic
+    try {
+        const orders = await API.get('/pedidos');
+        const list = document.getElementById('user-orders-list');
+        if (orders.length === 0) {
+            list.innerHTML = '<p style="color: var(--gray-medium);">Aún no has realizado ningún pedido.</p>';
+        } else {
+            list.innerHTML = orders.map(o => `
+                <div style="border: 1px solid #eee; padding: 20px; margin-bottom: 15px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <span style="font-weight: 700; font-size: 14px;">PEDIDO #${o.id}</span>
+                        <span style="text-transform: uppercase; font-size: 11px; padding: 3px 8px; border-radius: 10px; background: #eee;">${o.estado}</span>
+                    </div>
+                    <div style="font-size: 13px; color: var(--gray-medium);">
+                        ${new Date(o.fecha).toLocaleDateString()} | Total: ${formatPrice(o.total)}
+                    </div>
+                </div>
+            `).join('');
+        }
+    } catch (e) {
+        document.getElementById('user-orders-list').innerHTML = '<p>No se pudieron cargar los pedidos.</p>';
+    }
+
+    // Profile form logic
+    document.getElementById('profile-form').onsubmit = async (e) => {
+        e.preventDefault();
+        // This would call a PATCH /api/auth/perfil in a real app
+        showToast('Perfil actualizado correctamente (Demo)');
+    };
 }
 
 // --- Admin Views ---
@@ -644,9 +750,11 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('close-menu').onclick = closePanels;
 
     document.getElementById('user-btn').onclick = () => {
-        if (state.user) window.location.hash = '#/cuenta';
+        if (state.user) openAccountPanel();
         else openAuthModal();
     };
+
+    document.getElementById('close-account').onclick = closePanels;
 
     // Global scroll listener for header effect
     window.addEventListener('scroll', () => {
