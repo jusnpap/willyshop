@@ -226,6 +226,7 @@ async function renderHome() {
                     </div>
                 </div>
             `).join('');
+            initScrollReveal();
         }
         else {
             catGrid.innerHTML = '<p style="text-align: center; grid-column: 1/-1;">No hay categorías disponibles.</p>';
@@ -265,7 +266,7 @@ async function renderCatalog() {
         }
 
         list.innerHTML = products.map(p => `
-            <div class="product-card reveal reveal-up">
+            <div class="product-card reveal reveal-up" style="transition-delay: ${i * 0.1}s">
                 <a href="#/producto/${p.id}">
                     <div class="product-img-wrapper">
                         <img src="${p.imagen_url}" class="product-img" loading="lazy">
@@ -1188,15 +1189,22 @@ function showRegister() {
 // function updateUI() was here, moved to top
 
 function initScrollReveal() {
+    // If IntersectionObserver is not supported, show everything
+    if (!('IntersectionObserver' in window)) {
+        document.querySelectorAll('.reveal').forEach(el => el.classList.add('active'));
+        return;
+    }
+
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
                 entry.target.classList.add('active');
+                observer.unobserve(entry.target); // Unobserve after revealing to prevent repeated cycles
             }
         });
-    }, { threshold: 0.1 });
+    }, { threshold: 0.05 });
 
-    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+    document.querySelectorAll('.reveal:not(.active)').forEach(el => observer.observe(el));
 }
 
 // --- Initialization ---
