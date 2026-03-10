@@ -618,29 +618,34 @@ async function renderAbout() {
 
 // --- Admin Views ---
 
-async function renderAdmin() {
-    if (!state.user || state.user.rol !== 'admin') {
-        window.location.hash = '#/';
-        return;
-    }
-
-    const container = document.getElementById('main-content');
-    container.innerHTML = `
+const subview = window.location.hash.split('/')[2] || 'dash';
+const container = document.getElementById('main-content');
+container.innerHTML = `
         <div class="admin-container">
             <aside class="admin-sidebar">
                 <h2 style="font-size: 18px; margin-bottom: 40px; text-transform: uppercase;">Admin Panel</h2>
                 <a href="#/admin" class="admin-nav-item ${subview === 'dash' ? 'active' : ''}">Dashboard</a>
                 <a href="#/admin/productos" class="admin-nav-item ${subview === 'productos' ? 'active' : ''}">Productos</a>
-                <a href="#/admin/pedidos" class="admin-nav-item ${subview === 'orders' ? 'active' : ''}">Pedidos</a>
+                <a href="#/admin/pedidos" class="admin-nav-item ${subview === 'pedidos' ? 'active' : ''}">Pedidos</a>
                 <a href="#/admin/nosotros" class="admin-nav-item ${subview === 'nosotros' ? 'active' : ''}">Nosotros</a>
                 <div style="margin-top: 40px;">
                     <button onclick="logout()" class="admin-nav-item" style="width: 100%; text-align: left;">Cerrar Sesión</button>
                 </div>
             </aside>
             <main class="admin-main" id="admin-subview">
-                <!-- Dashboard content here -->
+                <!-- Administrative subview content here -->
             </main>
         </div>
+    `;
+
+if (subview === 'dash') renderAdminDash();
+else if (subview === 'productos') renderAdminProducts();
+else if (subview === 'pedidos') renderAdminOrders();
+else if (subview === 'nosotros') renderAdminAbout();
+}
+                < !--Dashboard content here-- >
+            </main >
+        </div >
     `;
 
     const subview = window.location.hash.split('/')[2] || 'dash';
@@ -657,20 +662,20 @@ async function renderAdminOrders() {
     try {
         const orders = await API.get('/admin/pedidos');
         sub.innerHTML = `
-            <h1 style="margin-bottom: 40px;">Gestión de Pedidos</h1>
-            <table style="width: 100%; border-collapse: collapse;">
-                <thead>
-                    <tr style="text-align: left; border-bottom: 2px solid #ddd;">
-                        <th style="padding: 15px;">ID</th>
-                        <th>Cliente</th>
-                        <th>Fecha</th>
-                        <th>Total</th>
-                        <th>Estado</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${orders.map(o => `
+    < h1 style = "margin-bottom: 40px;" > Gestión de Pedidos</h1 >
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="text-align: left; border-bottom: 2px solid #ddd;">
+                    <th style="padding: 15px;">ID</th>
+                    <th>Cliente</th>
+                    <th>Fecha</th>
+                    <th>Total</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${orders.map(o => `
                         <tr style="border-bottom: 1px solid #eee;">
                             <td style="padding: 15px;">#${o.id}</td>
                             <td>
@@ -693,21 +698,21 @@ async function renderAdminOrders() {
                             </td>
                         </tr>
                     `).join('')}
-                </tbody>
-            </table>
-        `;
+            </tbody>
+        </table>
+`;
     } catch (e) {
-        sub.innerHTML = `<p>Error: ${e.message}</p>`;
+        sub.innerHTML = `< p > Error: ${ e.message }</p > `;
     }
 }
 
 async function updateOrderStatus(id, status) {
     try {
-        await API.patch(`/admin/pedidos/${id}/estado`, { estado: status });
-        showToast('Estado de pedido actualizado');
+        await API.patch(`/ admin / pedidos / ${ id }/estado`, { estado: status });
+showToast('Estado de pedido actualizado');
     } catch (e) {
-        showToast(e.message);
-    }
+    showToast(e.message);
+}
 }
 
 async function renderAdminAbout() {
