@@ -70,6 +70,7 @@ CREATE TABLE colores (
   producto_id INTEGER,
   nombre TEXT NOT NULL,
   hex_code TEXT,
+  imagen_url TEXT,
   FOREIGN KEY (producto_id) REFERENCES productos(id)
 );
 

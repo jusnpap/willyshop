@@ -196,7 +196,7 @@ async function renderHome() {
             catGrid.innerHTML = `
             <section class="categories-grid container">
                 ${cats.map(c => `
-                    <div class="category-card animate-fade-up" onclick="window.location.hash='#/catalogo?categoria=${c.id}'" style="cursor: pointer;">
+                    <div class="category-card reveal reveal-up" onclick="window.location.hash='#/catalogo?categoria=${c.id}'" style="cursor: pointer;">
                         <img src="${c.imagen_url || 'https://images.unsplash.com/photo-1523381235312-70b92eb49a8d?q=80&w=2070'}" alt="${c.nombre}">
                         <div class="category-content">
                             <h3>${c.nombre}</h3>
@@ -243,7 +243,7 @@ async function renderCatalog() {
         }
 
         list.innerHTML = products.map(p => `
-            <div class="product-card animate-fade-up">
+            <div class="product-card reveal reveal-up">
                 <a href="#/producto/${p.id}">
                     <div class="product-img-wrapper">
                         <img src="${p.imagen_url}" class="product-img" loading="lazy">
@@ -336,6 +336,14 @@ async function renderProduct(id) {
                 document.querySelectorAll('.color-dot').forEach(b => b.style.transform = 'scale(1)');
                 btn.style.transform = 'scale(1.2)';
                 selectedColor = btn.dataset.id;
+
+                // Switch Image if the color has one
+                const colorData = p.colores.find(c => c.id == selectedColor);
+                if (colorData && colorData.imagen_url) {
+                    document.querySelector('.product-gallery img').src = colorData.imagen_url;
+                } else {
+                    document.querySelector('.product-gallery img').src = p.imagen_url;
+                }
             };
         });
 
@@ -925,22 +933,22 @@ async function openAddProductModal() {
 }
 
 async function openProductModal(id = null) {
-    let p = { nombre: '', descripcion: '', precio: '', categoria_id: 1, genero: 'unisex', imagen_url: '', tallas: [] };
+    let p = { nombre: '', descripcion: '', precio: '', categoria_id: 1, genero: 'unisex', imagen_url: '', tallas: [], colores: [] };
     if (id) {
         try {
             p = await API.get(`/productos/${id}`);
         } catch (e) { return showToast(e.message); }
     }
 
-    const modal = document.getElementById('auth-modal'); // Reusing modal container
+    const modal = document.getElementById('auth-modal');
     const forms = document.getElementById('auth-forms');
-
     const cats = await API.get('/categorias');
 
     forms.innerHTML = `
-        <h2 style="margin-bottom: 30px;">${id ? 'Editar' : 'Nuevo'} Producto</h2>
-        <form id="product-form">
+        <h2 style="margin-bottom: 20px;">${id ? 'Editar' : 'Nuevo'} Producto</h2>
+        <form id="product-form" style="max-height: 80vh; overflow-y: auto; padding-right: 15px;">
             <div class="form-group"><label>Nombre</label><input type="text" id="p-nombre" value="${p.nombre}" required></div>
+            
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                 <div class="form-group"><label>Precio</label><input type="number" step="0.01" id="p-precio" value="${p.precio}" required></div>
                 <div class="form-group"><label>Categoría</label>
@@ -949,31 +957,118 @@ async function openProductModal(id = null) {
                     </select>
                 </div>
             </div>
-            <div class="form-group"><label>Imagen URL</label><input type="text" id="p-img" value="${p.imagen_url}" placeholder="assets/p1.png"></div>
+
+            <div class="form-group"><label>Imagen Principal URL</label><input type="text" id="p-img" value="${p.imagen_url}" placeholder="assets/p1.png"></div>
+            
+            <div class="form-group">
+                <label>Tallas y Stock</label>
+                <div id="tallas-container">
+                    ${p.tallas.map((t, i) => `
+                        <div class="talla-row" style="display: flex; gap: 10px; margin-bottom: 10px;">
+                            <input type="text" placeholder="Nombre (S, M, L...)" value="${t.nombre}" class="t-nombre" style="flex: 2;">
+                            <input type="number" placeholder="Stock" value="${t.stock}" class="t-stock" style="flex: 1;">
+                            <button type="button" onclick="this.parentElement.remove()" style="color: red;">&times;</button>
+                        </div>
+                    `).join('')}
+                </div>
+                <button type="button" class="btn-outline" style="font-size: 11px; padding: 5px 10px;" onclick="addTallaRow()">+ Añadir Talla</button>
+            </div>
+
+            <div class="form-group">
+                <label>Colores e Imágenes</label>
+                <div id="colores-container">
+                    ${p.colores.map((c, i) => `
+                        <div class="color-row" style="display: flex; gap: 10px; margin-bottom: 10px; background: #f9f9f9; padding: 10px; border-radius: 4px;">
+                            <div style="flex: 1;">
+                                <input type="text" placeholder="Nombre" value="${c.nombre}" class="c-nombre" style="margin-bottom: 5px;">
+                                <input type="color" value="${c.hex_code}" class="c-hex" style="height: 30px;">
+                            </div>
+                            <div style="flex: 2;">
+                                <input type="text" placeholder="Imagen URL específica" value="${c.imagen_url || ''}" class="c-img">
+                            </div>
+                            <button type="button" onclick="this.parentElement.remove()" style="color: red;">&times;</button>
+                        </div>
+                    `).join('')}
+                </div>
+                <button type="button" class="btn-outline" style="font-size: 11px; padding: 5px 10px;" onclick="addColorRow()">+ Añadir Color</button>
+            </div>
+
             <div class="form-group"><label>Descripción</label><textarea id="p-desc">${p.descripcion || ''}</textarea></div>
-            <div style="display: flex; gap: 10px; margin-top: 20px;">
-                <button type="submit" class="btn-dark btn-premium" style="flex: 1;">Guardar</button>
+            
+            <div style="display: flex; gap: 10px; margin-top: 30px; position: sticky; bottom: 0; background: #fff; padding: 20px 0;">
+                <button type="submit" class="btn-dark btn-premium" style="flex: 1;">Guardar Producto</button>
                 <button type="button" onclick="closeModal('auth-modal')" class="btn-premium" style="flex: 1;">Cancelar</button>
             </div>
         </form>
     `;
 
+    // Helpers
+    window.addTallaRow = () => {
+        const div = document.createElement('div');
+        div.className = 'talla-row';
+        div.style.display = 'flex';
+        div.style.gap = '10px';
+        div.style.marginBottom = '10px';
+        div.innerHTML = `
+            <input type="text" placeholder="Nombre" class="t-nombre" style="flex: 2;">
+            <input type="number" placeholder="Stock" value="0" class="t-stock" style="flex: 1;">
+            <button type="button" onclick="this.parentElement.remove()" style="color: red;">&times;</button>
+        `;
+        document.getElementById('tallas-container').appendChild(div);
+    };
+
+    window.addColorRow = () => {
+        const div = document.createElement('div');
+        div.className = 'color-row';
+        div.style.display = 'flex';
+        div.style.gap = '10px';
+        div.style.marginBottom = '10px';
+        div.style.background = '#f9f9f9';
+        div.style.padding = '10px';
+        div.style.borderRadius = '4px';
+        div.innerHTML = `
+            <div style="flex: 1;">
+                <input type="text" placeholder="Nombre" class="c-nombre" style="margin-bottom: 5px;">
+                <input type="color" value="#000000" class="c-hex" style="height: 30px;">
+            </div>
+            <div style="flex: 2;">
+                <input type="text" placeholder="Imagen URL" class="c-img">
+            </div>
+            <button type="button" onclick="this.parentElement.remove()" style="color: red;">&times;</button>
+        `;
+        document.getElementById('colores-container').appendChild(div);
+    };
+
     document.getElementById('product-form').onsubmit = async (e) => {
         e.preventDefault();
+
+        const tallas = Array.from(document.querySelectorAll('.talla-row')).map(row => ({
+            nombre: row.querySelector('.t-nombre').value,
+            stock: parseInt(row.querySelector('.t-stock').value) || 0
+        }));
+
+        const colores = Array.from(document.querySelectorAll('.color-row')).map(row => ({
+            nombre: row.querySelector('.c-nombre').value,
+            hex_code: row.querySelector('.c-hex').value,
+            imagen_url: row.querySelector('.c-img').value
+        }));
+
         const data = {
             nombre: document.getElementById('p-nombre').value,
             precio: parseFloat(document.getElementById('p-precio').value),
             categoria_id: parseInt(document.getElementById('p-cat').value),
             imagen_url: document.getElementById('p-img').value,
             descripcion: document.getElementById('p-desc').value,
-            genero: p.genero // keep existing
+            genero: p.genero,
+            tallas,
+            colores
         };
 
         try {
             if (id) await API.put(`/admin/productos/${id}`, data);
             else await API.post('/admin/productos', data);
 
-            showToast('Producto guardado');
+            showToast('Producto guardado correctamente');
             closeModal('auth-modal');
             renderAdminProducts();
         } catch (err) { showToast(err.message); }
@@ -1052,6 +1147,23 @@ function showRegister() {
             showToast(err.message);
         }
     };
+}
+
+function updateUI() {
+    initScrollReveal();
+    // ... rest of state updates if any needed
+}
+
+function initScrollReveal() {
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('active');
+            }
+        });
+    }, { threshold: 0.1 });
+
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 }
 
 // --- Initialization ---

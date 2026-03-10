@@ -492,8 +492,8 @@ async function handleAdminCreateProducto(request, env) {
     // Add colors
     if (colores && colores.length > 0) {
         for (const color of colores) {
-            await env.DB.prepare('INSERT INTO colores (producto_id, nombre, hex_code) VALUES (?, ?, ?)')
-                .bind(productoId, color.nombre, color.hex_code || '#000000').run();
+            await env.DB.prepare('INSERT INTO colores (producto_id, nombre, hex_code, imagen_url) VALUES (?, ?, ?, ?)')
+                .bind(productoId, color.nombre, color.hex_code || '#000000', color.imagen_url || '').run();
         }
     }
 
@@ -503,12 +503,30 @@ async function handleAdminCreateProducto(request, env) {
 async function handleAdminUpdateProducto(request, env) {
     const id = request.url.split('/').pop();
     const data = await request.json();
-    const { nombre, descripcion, precio, precio_oferta, categoria_id, imagen_url, genero, destacado, nuevo } = data;
+    const { nombre, descripcion, precio, precio_oferta, categoria_id, imagen_url, genero, destacado, nuevo, tallas, colores } = data;
 
     await env.DB.prepare(
         `UPDATE productos SET nombre = ?, descripcion = ?, precio = ?, precio_oferta = ?, 
      categoria_id = ?, imagen_url = ?, genero = ?, destacado = ?, nuevo = ? WHERE id = ?`
     ).bind(nombre, descripcion || '', precio, precio_oferta || null, categoria_id || null, imagen_url || '', genero || 'unisex', destacado ? 1 : 0, nuevo ? 1 : 0, id).run();
+
+    // Sync Tallas
+    if (tallas) {
+        await env.DB.prepare('DELETE FROM tallas WHERE producto_id = ?').bind(id).run();
+        for (const t of tallas) {
+            await env.DB.prepare('INSERT INTO tallas (producto_id, nombre, stock) VALUES (?, ?, ?)')
+                .bind(id, t.nombre, t.stock || 0).run();
+        }
+    }
+
+    // Sync Colores
+    if (colores) {
+        await env.DB.prepare('DELETE FROM colores WHERE producto_id = ?').bind(id).run();
+        for (const c of colores) {
+            await env.DB.prepare('INSERT INTO colores (producto_id, nombre, hex_code, imagen_url) VALUES (?, ?, ?, ?)')
+                .bind(id, c.nombre, c.hex_code || '#000000', c.imagen_url || '').run();
+        }
+    }
 
     return json({ message: 'Producto actualizado' });
 }
